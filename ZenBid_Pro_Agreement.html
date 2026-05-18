@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZenBid Pro - Partnership Agreement</title>
+    <style>
+        /* A4 Reset and Base Styles */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: #f4f4f5;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* A4 Page dimensions (Portrait) */
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: relative;
+            display: flex;
+            flex-col;
+            overflow: hidden;
+        }
+
+        /* Print Media Queries */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .page {
+                box-shadow: none;
+                width: 100%;
+                height: 100%;
+            }
+
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+        }
+
+        /* Layout */
+        .sidebar {
+            width: 70mm;
+            background: #0F172A;
+            color: white;
+            padding: 40px 30px;
+            float: left;
+            height: 297mm;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+
+        .main-content {
+            margin-left: 70mm;
+            width: 140mm;
+            padding: 40px 40px;
+            height: 297mm;
+        }
+
+        /* Sidebar Elements */
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo span {
+            color: #6366F1;
+        }
+
+        .side-title {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #64748B;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin-bottom: 40px;
+        }
+
+        .feature-list li {
+            font-size: 12px;
+            color: #E2E8F0;
+            margin-bottom: 12px;
+            line-height: 1.4;
+            display: flex;
+            gap: 8px;
+        }
+
+        .feature-list li::before {
+            content: "✓";
+            color: #10B981;
+            font-weight: bold;
+        }
+
+        .security-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 50px;
+        }
+
+        .security-box h4 {
+            font-size: 12px;
+            color: #F8FAFC;
+            margin-bottom: 8px;
+        }
+
+        .security-box p {
+            font-size: 10px;
+            color: #94A3B8;
+            line-height: 1.5;
+        }
+
+        /* Main Content Elements */
+        .document-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: #0F172A;
+            margin-bottom: 5px;
+            line-height: 1.1;
+        }
+
+        .document-subtitle {
+            font-size: 14px;
+            color: #64748B;
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0F172A;
+            border-bottom: 2px solid #E2E8F0;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            margin-top: 25px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .pitch-text {
+            font-size: 12px;
+            color: #334155;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .pitch-text strong {
+            color: #0F172A;
+        }
+
+        .pricing-box {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .price {
+            font-size: 32px;
+            font-weight: 800;
+            color: #4F46E5;
+        }
+
+        .price span {
+            font-size: 14px;
+            color: #64748B;
+            font-weight: 600;
+        }
+
+        /* Agreement Form */
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            flex: 1;
+        }
+
+        .form-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #64748B;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            display: block;
+        }
+
+        .form-input {
+            width: 100%;
+            border: none;
+            border-bottom: 1px dashed #CBD5E1;
+            padding: 8px 0;
+            font-size: 13px;
+            color: #0F172A;
+            background: transparent;
+            outline: none;
+        }
+
+        .terms-text {
+            font-size: 9px;
+            color: #64748B;
+            line-height: 1.5;
+            margin-top: 20px;
+            text-align: justify;
+        }
+
+        .signature-section {
+            margin-top: 30px;
+            display: flex;
+            gap: 30px;
+        }
+
+        .sig-box {
+            flex: 1;
+        }
+
+        .sig-line {
+            border-bottom: 1px solid #0F172A;
+            height: 40px;
+            margin-bottom: 5px;
+        }
+
+        .sig-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page">
+        <!-- Dark Sidebar (30%) -->
+        <div class="sidebar">
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                </svg>
+                ZenBid<span>Pro</span>
+            </div>
+
+            <h3 class="side-title">The Platform</h3>
+            <ul class="feature-list">
+                <li>Pre-loaded Trade Price Books</li>
+                <li>Automated Profit & Overhead Math</li>
+                <li>Interactive Client Approval Portal</li>
+                <li>Server-Side PDF Generation</li>
+                <li>Instant SMS/Email Bidding</li>
+            </ul>
+
+            <h3 class="side-title">The ROI Guarantee</h3>
+            <ul class="feature-list">
+                <li>Save 10+ hours per week on paperwork</li>
+                <li>Increase close rates by bidding first</li>
+                <li>Prevent lost margins from math errors</li>
+            </ul>
+
+            <div class="security-box">
+                <h4>Privacy & Security</h4>
+                <p>Your client list and pricing formulas are 100% your property. Hosted on encrypted, bank-grade
+                    servers. We never share or sell your data.</p>
+            </div>
+        </div>
+
+        <!-- Light Main Content (70%) -->
+        <div class="main-content">
+            <h1 class="document-title">Software License & Partnership Agreement</h1>
+            <p class="document-subtitle">Stop writing estimates. Start closing jobs.</p>
+
+            <h2 class="section-title">1. The Objective</h2>
+            <p class="pitch-text">
+                The speed of your quoting directly determines your win rate. ZenBid Pro equips <strong>[Company
+                    Name]</strong> with a dedicated, mobile-first sales engine designed to eliminate evening paperwork.
+            </p>
+            <p class="pitch-text">
+                By transitioning from manual PDFs to interactive, instantly generated digital proposals, your team will
+                present a premium, million-dollar brand image while securing client signatures directly from the
+                driveway.
+            </p>
+
+            <div class="pricing-box">
+                <p class="side-title" style="margin-bottom: 5px;">30-Day Setup & Trial Phase</p>
+                <div class="price">$499 <span>one-time</span></div>
+                <p style="font-size: 11px; color: #64748B; margin-top: 5px;">Covers white-glove setup, dedicated
+                    onboarding, and data security.</p>
+                <p style="font-size: 10px; color: #4F46E5; margin-top: 8px; font-weight: 600;">After 30 days (if proven
+                    ROI): $8,000 / Year (Billed Annually)</p>
+            </div>
+
+            <h2 class="section-title">2. Account Activation Details</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Company Name</label>
+                    <input type="text" class="form-input" placeholder="Enter Company Name">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Authorized Contact Name</label>
+                    <input type="text" class="form-input" placeholder="Enter Full Name">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email for Login Creation</label>
+                    <input type="text" class="form-input" placeholder="admin@company.com">
+                </div>
+            </div>
+
+            <h2 class="section-title">3. Payment Authorization</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Name on Card</label>
+                    <input type="text" class="form-input" placeholder="As it appears on card">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                    <label class="form-label">Credit Card Number</label>
+                    <input type="text" class="form-input" placeholder="XXXX XXXX XXXX XXXX">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Exp (MM/YY)</label>
+                    <input type="text" class="form-input" placeholder="MM/YY">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">CVC</label>
+                    <input type="text" class="form-input" placeholder="123">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Billing Zip</label>
+                    <input type="text" class="form-input" placeholder="Zip Code">
+                </div>
+            </div>
+
+            <p class="terms-text">
+                By signing below, the Authorized Signatory authorizes ZenBid Pro to charge the payment method listed
+                above for the initial $499 Setup & Trial Phase. This fee ensures secure server provisioning, platform
+                maintenance, and dedicated 1-on-1 onboarding. After 30 days, upon confirming the platform's value and
+                mutual agreement, the account will transition to the $8,000 Annual Enterprise License. Client maintains
+                100% ownership of all inputted data at all times.
+            </p>
+
+            <div class="signature-section">
+                <div class="sig-box">
+                    <div class="sig-line"></div>
+                    <div class="sig-label">Authorized Signature</div>
+                </div>
+                <div class="sig-box" style="flex: 0.4;">
+                    <div class="sig-line"></div>
+                    <div class="sig-label">Date</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+
+</html>
