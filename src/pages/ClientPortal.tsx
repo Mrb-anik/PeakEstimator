@@ -219,6 +219,7 @@ export default function ClientPortal() {
         status: 'approved',
         client_approved_at: new Date().toISOString(),
         client_message: message || null,
+        signature_data: signatureDataUrl,
         updated_at: new Date().toISOString(),
       })
       .eq('share_token', shareToken);

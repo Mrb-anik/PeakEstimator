@@ -168,9 +168,12 @@ serve(async (req) => {
   <div class="sig-block">
     <div class="sig-col">
       <div class="sig-label">Client Signature</div>
-      <div class="sig-line"></div>
-      <div class="sig-sub">Signature &amp; Date</div>
-      <div class="sig-hint">Sign above</div>
+      ${project.signature_data 
+        ? `<div style="height: 52px; margin-bottom: 8px;"><img src="${project.signature_data}" style="max-height: 52px; max-width: 100%;" /></div>`
+        : `<div class="sig-line"></div>`
+      }
+      <div class="sig-sub">${project.client_approved_at ? "Signed electronically on " + new Date(project.client_approved_at).toLocaleDateString("en-US") : "Signature &amp; Date"}</div>
+      <div class="sig-hint">${project.client_approved_at ? "IP Logged" : "Sign above"}</div>
     </div>
     <div class="sig-col">
       <div class="sig-label">Authorized By</div>
