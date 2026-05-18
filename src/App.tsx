@@ -97,6 +97,7 @@ function App() {
 
         {/* Auth routes */}
         <Route path="/login" element={<Login />} />
+        {/* /signup only reachable via Supabase invite magic link */}
         <Route path="/signup" element={<Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
