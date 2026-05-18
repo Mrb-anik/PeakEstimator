@@ -18,6 +18,7 @@ import PriceBook from './pages/PriceBook';
 import Settings from './pages/Settings';
 import ClientPortal from './pages/ClientPortal';
 import LandingPage from './pages/LandingPage';
+import AdminPortal from './pages/AdminPortal';
 
 // Shows landing page to guests, redirects authenticated users to /dashboard
 function SmartRoot() {
@@ -110,6 +111,7 @@ function App() {
         <Route path="/projects/:id" element={<ProtectedRoute><AppLayout><EstimatorWorkspace /></AppLayout></ProtectedRoute>} />
         <Route path="/price-book" element={<ProtectedRoute><AppLayout><PriceBook /></AppLayout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute><AppLayout><AdminPortal /></AppLayout></ProtectedRoute>} />
 
         {/* Catch-all → landing page */}
         <Route path="*" element={<Navigate to="/" replace />} />

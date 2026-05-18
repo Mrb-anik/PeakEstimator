@@ -62,6 +62,29 @@ export default function Sidebar() {
             )}
           </NavLink>
         ))}
+
+        {profile?.is_admin && (
+          <NavLink
+            to="/admin"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-150 ${
+                isActive
+                  ? 'bg-rose-50 text-rose-700'
+                  : 'text-slate-500 hover:bg-rose-50/50 hover:text-rose-700'
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <ShieldAlert
+                  className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? 'text-rose-600' : 'text-slate-400'}`}
+                  style={{ width: '18px', height: '18px' }}
+                />
+                Admin Portal
+              </>
+            )}
+          </NavLink>
+        )}
       </nav>
 
       {/* Profile + Logout */}
