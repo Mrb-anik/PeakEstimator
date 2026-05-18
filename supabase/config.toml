@@ -5,7 +5,7 @@ port = 54321
 [db]
 port = 54322
 shadow_port = 54320
-major_version = 15
+major_version = 17
 
 [studio]
 enabled = true
@@ -20,7 +20,6 @@ enabled = true
 
 [auth]
 enabled = true
-port = 54325
 site_url = "http://localhost:3000"
 additional_redirect_urls = ["http://localhost:3000"]
 jwt_expiry = 3600
