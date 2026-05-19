@@ -65,7 +65,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => { fetchProfile(); }, [fetchProfile]);
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-navy-950 transition-colors duration-200">
       <Sidebar />
       {/* pt-14 on mobile for top bar, lg:pt-0 for desktop; lg:ml-60 for sidebar offset */}
       <main className="flex-1 overflow-auto pt-14 lg:pt-0 lg:ml-60 app-main">
@@ -76,6 +76,15 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  useEffect(() => {
+    const theme = localStorage.getItem('theme');
+    if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <Toaster position="top-right" richColors closeButton />

@@ -2,17 +2,21 @@ import type { Config } from 'tailwindcss';
 
 const config: Config = {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
         // PeakEstimator Enterprise Palette
         navy: {
           DEFAULT: '#0F172A',
+          700: '#1E293B',
           800: '#1E293B',
           900: '#0F172A',
+          950: '#020617',
         },
         copper: {
           DEFAULT: '#C58B5C',
+          hover: '#D9A679',
           50:  '#FDF8F5',
           100: '#F9EFE8',
           200: '#F0D5C1',
@@ -31,19 +35,27 @@ const config: Config = {
           bg: '#F8FAFC',
           card: '#FFFFFF',
           border: '#E2E8F0',
+          darkBg: '#020617',
+          darkCard: '#0F172A',
+          darkBorder: '#1E293B',
         },
         text: {
           primary: '#111827',
           secondary: '#64748B',
+          darkPrimary: '#F8FAFC',
+          darkSecondary: '#94A3B8',
         },
         status: {
           success: '#10B981',
+          warning: '#F59E0B',
           danger: '#EF4444',
         }
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         inter: ['Inter', 'system-ui', 'sans-serif'],
+        sora: ['Sora', 'sans-serif'],
+        'space-grotesk': ['"Space Grotesk"', 'sans-serif'],
       },
       borderRadius: {
         '2xl': '1rem',
@@ -53,6 +65,7 @@ const config: Config = {
       boxShadow: {
         'soft': '0 4px 20px -2px rgba(15, 23, 42, 0.05)',
         'card': '0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03)',
+        'premium': '0 10px 30px -10px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.02)',
       },
       backgroundImage: {
         'peak-hero': 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',

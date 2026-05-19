@@ -20,6 +20,16 @@
     background-color: #F8FAFC;
     color: #111827;
     min-height: 100vh;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  html.dark body {
+    background-color: #020617;
+    color: #F8FAFC;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Sora', 'Space Grotesk', system-ui, sans-serif;
   }
 
   #root {
@@ -33,11 +43,17 @@
     scrollbar-width: thin;
     scrollbar-color: #CBD5E1 transparent;
   }
+  html.dark .scrollbar-thin {
+    scrollbar-color: #334155 transparent;
+  }
   .scrollbar-thin::-webkit-scrollbar { width: 4px; }
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
   .scrollbar-thin::-webkit-scrollbar-thumb {
     background-color: #CBD5E1;
     border-radius: 2px;
+  }
+  html.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #334155;
   }
 
   /* ── Typography helpers ─────────────────────── */
@@ -70,9 +86,9 @@
 @keyframes scaleIn       { from { opacity: 0; transform: scale(0.95); }      to { opacity: 1; transform: scale(1); } }
 @keyframes slideUp       { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes pulse-ring    {
-  0%   { box-shadow: 0 0 0 0 rgba(192, 120, 64, 0.4); }
-  70%  { box-shadow: 0 0 0 10px rgba(192, 120, 64, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(192, 120, 64, 0); }
+  0%   { box-shadow: 0 0 0 0 rgba(197, 139, 92, 0.4); }
+  70%  { box-shadow: 0 0 0 10px rgba(197, 139, 92, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(197, 139, 92, 0); }
 }
 
 .animate-slide-in-right  { animation: slideInRight 0.3s ease-out forwards; }
@@ -87,6 +103,7 @@ input:focus, textarea:focus, select:focus { outline: none; }
 
 /* ── Table row hover ─────────────────────────── */
 .table-row-hover:hover { background-color: #F8FAFC; }
+html.dark .table-row-hover:hover { background-color: #0F172A; }
 
 /* ── Status badge styles ─────────────────────── */
 .status-lead     { background: #F1F5F9; color: #64748B; border: 1px solid #E2E8F0; }
@@ -96,11 +113,23 @@ input:focus, textarea:focus, select:focus { outline: none; }
 .status-won      { background: #ECFDF5; color: #10B981; border: 1px solid #D1FAE5; }
 .status-lost     { background: #FEF2F2; color: #EF4444; border: 1px solid #FEE2E2; }
 
+html.dark .status-lead     { background: #1E293B; color: #94A3B8; border: 1px solid #334155; }
+html.dark .status-bidding  { background: #1E293B; color: #F8FAFC; border: 1px solid #334155; }
+html.dark .status-sent     { background: #3B2E2A; color: #D9A679; border: 1px solid #4E3B33; }
+html.dark .status-approved { background: #064E3B; color: #10B981; border: 1px solid #065F46; }
+html.dark .status-won      { background: #064E3B; color: #10B981; border: 1px solid #065F46; }
+html.dark .status-lost     { background: #451A1A; color: #EF4444; border: 1px solid #582020; }
+
 /* ── Category badge styles ───────────────────── */
 .category-material  { background: #D1FAE5; color: #059669; }
 .category-labor     { background: #DBEAFE; color: #2563EB; }
 .category-equipment { background: #FEF3C7; color: #D97706; }
 .category-other     { background: #F3F4F6; color: #6B7280; }
+
+html.dark .category-material  { background: #064E3B; color: #10B981; }
+html.dark .category-labor     { background: #1E3A8A; color: #60A5FA; }
+html.dark .category-equipment { background: #78350F; color: #FBBF24; }
+html.dark .category-other     { background: #1F2937; color: #9CA3AF; }
 
 /* ── Mobile bottom nav ───────────────────────── */
 @media (max-width: 1023px) {

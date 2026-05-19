@@ -42,17 +42,17 @@ export default function Projects() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto animate-fade-in">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto animate-fade-in font-inter select-none">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Projects</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{projects.length} total bids</p>
+          <h1 className="text-2xl sm:text-3xl font-sora font-extrabold text-text-primary dark:text-text-darkPrimary">Projects</h1>
+          <p className="text-text-secondary dark:text-text-darkSecondary text-sm mt-0.5">{projects.length} total bids</p>
         </div>
         <button
           id="projects-new-bid"
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-copper hover:bg-copper-600 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-copper-200/50"
+          className="flex items-center justify-center gap-2 px-5 py-3 bg-copper hover:bg-copper-hover active:bg-copper-600 text-white rounded-xl font-bold text-sm transition-all shadow-md hover:-translate-y-0.5 active:translate-y-0 w-full sm:w-auto"
         >
           <Plus className="w-4 h-4" />
           New Bid
@@ -60,27 +60,28 @@ export default function Projects() {
       </div>
 
       {/* Search + Filter */}
-      <div className="flex items-center gap-3 mb-5">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="relative w-full md:max-w-sm">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
           <input
             id="projects-search"
             type="text"
             placeholder="Search by name or client..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-copper-500/20 focus:border-copper-400 transition-all shadow-sm"
+            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-navy border border-slate-200 dark:border-navy-800 rounded-xl text-sm text-text-primary dark:text-text-darkPrimary placeholder-slate-400 dark:placeholder-slate-500 focus:border-copper focus:ring-1 focus:ring-copper/40 transition-all shadow-sm"
           />
         </div>
-        <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+        
+        <div className="flex flex-wrap items-center gap-1 bg-white dark:bg-navy border border-slate-200 dark:border-navy-800 rounded-xl p-1 shadow-sm w-fit max-w-full overflow-x-auto scrollbar-thin">
           {STATUS_TABS.map(tab => (
             <button
               key={tab.value}
               onClick={() => setStatusFilter(tab.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
                 statusFilter === tab.value
-                  ? 'bg-copper text-white shadow-sm shadow-copper-200/40'
-                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                  ? 'bg-copper text-white shadow-sm'
+                  : 'text-text-secondary dark:text-text-darkSecondary hover:text-text-primary dark:hover:text-white hover:bg-slate-50 dark:hover:bg-navy-950'
               }`}
             >
               {tab.label}
@@ -89,84 +90,100 @@ export default function Projects() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-card overflow-hidden">
+      {/* Table Card Container */}
+      <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card rounded-2xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-4 border-copper-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-copper border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="py-20 text-center">
-            <Filter className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500 text-sm font-medium">
+          <div className="py-20 text-center px-6">
+            <div className="w-12 h-12 bg-app-bg dark:bg-navy-950 border border-app-border dark:border-navy-800 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Filter className="w-6 h-6 text-text-secondary dark:text-text-darkSecondary" />
+            </div>
+            <p className="text-text-primary dark:text-text-darkPrimary text-sm font-semibold">
               {search || statusFilter !== 'all' ? 'No projects match your filters' : 'No projects yet'}
             </p>
             {!search && statusFilter === 'all' && (
               <button
                 onClick={() => setShowModal(true)}
-                className="mt-4 px-5 py-2 bg-copper text-white rounded-xl text-sm font-semibold hover:bg-copper-600 transition-colors shadow-md shadow-copper-200/50"
+                className="mt-5 px-5 py-2.5 bg-copper hover:bg-copper-hover text-white rounded-xl text-sm font-bold transition-all shadow-md active:translate-y-0 hover:-translate-y-0.5"
               >
                 Create First Project
               </button>
             )}
           </div>
         ) : (
-          <>
-            {/* Table Header */}
-            <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-slate-100 bg-slate-50">
-              <div className="col-span-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Project</div>
-              <div className="col-span-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Client</div>
-              <div className="col-span-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Trade</div>
-              <div className="col-span-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Value</div>
-              <div className="col-span-2 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</div>
-              <div className="col-span-1 text-xs font-semibold text-slate-500 uppercase tracking-wide text-right">Actions</div>
-            </div>
+          <div className="overflow-x-auto scrollbar-thin">
+            <div className="min-w-[900px] divide-y divide-app-border dark:divide-navy-800">
+              {/* Table Header */}
+              <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-slate-50 dark:bg-navy-950 border-b border-app-border dark:border-navy-800">
+                <div className="col-span-3 text-[10px] font-bold text-text-secondary dark:text-text-darkSecondary uppercase tracking-wider">Project Name</div>
+                <div className="col-span-2 text-[10px] font-bold text-text-secondary dark:text-text-darkSecondary uppercase tracking-wider">Client Name</div>
+                <div className="col-span-2 text-[10px] font-bold text-text-secondary dark:text-text-darkSecondary uppercase tracking-wider">Trade Discipline</div>
+                <div className="col-span-2 text-[10px] font-bold text-text-secondary dark:text-text-darkSecondary uppercase tracking-wider">Estimated Value</div>
+                <div className="col-span-2 text-[10px] font-bold text-text-secondary dark:text-text-darkSecondary uppercase tracking-wider">Bidding Status</div>
+                <div className="col-span-1 text-[10px] font-bold text-text-secondary dark:text-text-darkSecondary uppercase tracking-wider text-right">Actions</div>
+              </div>
 
-            {/* Rows */}
-            <div className="divide-y divide-slate-50">
-              {filtered.map(project => (
-                <div
-                  key={project.id}
-                  onClick={() => navigate(`/projects/${project.id}`)}
-                  className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-slate-50/80 cursor-pointer transition-colors items-center"
-                >
-                  <div className="col-span-3 min-w-0">
-                    <div className="text-sm font-semibold text-slate-800 truncate">{project.name}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">
-                      {new Date(project.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              {/* Rows */}
+              <div className="divide-y divide-app-border dark:divide-navy-800">
+                {filtered.map(project => (
+                  <div
+                    key={project.id}
+                    onClick={() => navigate(`/projects/${project.id}`)}
+                    className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-navy-950/60 cursor-pointer transition-colors items-center"
+                  >
+                    <div className="col-span-3 min-w-0 pr-2">
+                      <div className="text-sm font-bold text-text-primary dark:text-text-darkPrimary truncate hover:text-copper transition-colors">{project.name}</div>
+                      <div className="text-xs text-text-secondary dark:text-text-darkSecondary mt-0.5 font-medium">
+                        {new Date(project.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </div>
+                    </div>
+                    
+                    <div className="col-span-2 min-w-0 pr-2">
+                      <div className="text-sm font-semibold text-text-primary dark:text-text-darkPrimary truncate">{project.client_name || '—'}</div>
+                      <div className="text-xs text-text-secondary dark:text-text-darkSecondary truncate mt-0.5 font-medium">{project.client_email || ''}</div>
+                    </div>
+                    
+                    <div className="col-span-2">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-text-primary dark:text-text-darkPrimary px-2.5 py-1 bg-slate-100 dark:bg-navy-950 border border-slate-200 dark:border-navy-850 rounded-lg capitalize">
+                        <span>{TRADE_EMOJIS[project.trade]}</span>
+                        <span>{project.trade}</span>
+                      </span>
+                    </div>
+                    
+                    <div className="col-span-2">
+                      <span className="text-sm font-bold text-text-primary dark:text-text-darkPrimary">{formatCurrency(project.total_value || 0)}</span>
+                    </div>
+                    
+                    <div className="col-span-2">
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${getStatusClass(project.status)}`}>
+                        {project.status}
+                      </span>
+                    </div>
+                    
+                    <div className="col-span-1 flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={e => handleDelete(e, project.id)}
+                        disabled={deletingId === project.id}
+                        className="p-1.5 text-text-secondary dark:text-text-darkSecondary hover:text-status-danger dark:hover:text-status-danger hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-all disabled:opacity-50"
+                        title="Delete Project"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => navigate(`/projects/${project.id}`)}
+                        className="p-1.5 text-text-secondary dark:text-text-darkSecondary hover:text-copper dark:hover:text-copper transition-all"
+                      >
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                  <div className="col-span-2 min-w-0">
-                    <div className="text-sm text-slate-700 truncate">{project.client_name || '—'}</div>
-                    <div className="text-xs text-slate-400 truncate">{project.client_email || ''}</div>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-sm">
-                      {TRADE_EMOJIS[project.trade]} <span className="capitalize text-slate-700">{project.trade}</span>
-                    </span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-sm font-bold text-slate-900">{formatCurrency(project.total_value || 0)}</span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize ${getStatusClass(project.status)}`}>
-                      {project.status}
-                    </span>
-                  </div>
-                  <div className="col-span-1 flex items-center justify-end gap-1">
-                    <button
-                      onClick={e => handleDelete(e, project.id)}
-                      disabled={deletingId === project.id}
-                      className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <ArrowRight className="w-4 h-4 text-slate-300" />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </>
+          </div>
         )}
       </div>
 

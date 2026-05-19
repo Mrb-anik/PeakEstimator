@@ -69,39 +69,39 @@ export default function Settings() {
     setUploadingLogo(false);
   };
 
-  const inputClass = 'w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-copper-500/20 focus:border-copper-400 transition-all';
+  const inputClass = 'w-full px-4 py-2.5 bg-white dark:bg-navy-950 border border-slate-200 dark:border-navy-700 rounded-xl text-sm text-text-primary dark:text-text-darkPrimary placeholder-slate-400 focus:border-copper focus:ring-1 focus:ring-copper/40 transition-all';
 
   return (
-    <div className="p-8 max-w-3xl mx-auto animate-fade-in space-y-6">
+    <div className="p-4 sm:p-8 max-w-3xl mx-auto animate-fade-in space-y-6 font-inter select-none">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-        <p className="text-slate-500 text-sm mt-0.5">Manage your company profile and defaults</p>
+        <h1 className="text-2xl sm:text-3xl font-sora font-extrabold text-text-primary dark:text-text-darkPrimary">Settings</h1>
+        <p className="text-text-secondary dark:text-text-darkSecondary text-sm mt-0.5">Manage your company profile and defaults</p>
       </div>
 
       {/* Company Profile */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-card">
-        <div className="px-6 py-5 border-b border-slate-100">
+      <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card rounded-2xl overflow-hidden">
+        <div className="px-6 py-5 border-b border-app-border dark:border-navy-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-navy-50 rounded-lg flex items-center justify-center">
-              <Building2 className="w-4 h-4 text-navy-600" />
+            <div className="w-8 h-8 bg-slate-100 dark:bg-navy-950 border border-slate-200 dark:border-navy-850 rounded-lg flex items-center justify-center">
+              <Building2 className="w-4 h-4 text-text-primary dark:text-text-darkPrimary" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Company Profile</h2>
-              <p className="text-xs text-slate-400">Shown on all proposals and PDFs</p>
+              <h2 className="text-sm sm:text-base font-sora font-bold text-text-primary dark:text-text-darkPrimary">Company Profile</h2>
+              <p className="text-xs text-text-secondary dark:text-text-darkSecondary font-medium">Shown on all proposals and PDFs</p>
             </div>
           </div>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-6">
           {/* Logo */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-2">Company Logo</label>
+            <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-darkSecondary mb-2">Company Logo</label>
             <div className="flex items-center gap-4">
-              <div className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden bg-slate-50">
+              <div className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-200 dark:border-navy-700 flex items-center justify-center overflow-hidden bg-slate-50 dark:bg-navy-950">
                 {logoUrl ? (
                   <img src={logoUrl} alt="Company logo" className="w-full h-full object-contain p-1" />
                 ) : (
-                  <Building2 className="w-8 h-8 text-slate-300" />
+                  <Building2 className="w-8 h-8 text-slate-300 dark:text-slate-700" />
                 )}
               </div>
               <div>
@@ -116,19 +116,19 @@ export default function Settings() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingLogo}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition-all shadow-sm disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-navy-950 border border-slate-200 dark:border-navy-700 text-text-secondary dark:text-text-darkSecondary rounded-xl text-sm font-bold hover:bg-slate-50 dark:hover:bg-navy-900 transition-all shadow-sm disabled:opacity-50"
                 >
                   <Upload className="w-4 h-4" />
                   {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
                 </button>
-                <p className="text-xs text-slate-400 mt-1.5">PNG, JPG, SVG up to 2MB</p>
+                <p className="text-[11px] text-text-secondary dark:text-text-darkSecondary mt-1.5 font-medium">PNG, JPG, SVG up to 2MB</p>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Your Name</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-darkSecondary mb-1.5">Your Name</label>
               <input
                 id="settings-full-name"
                 type="text"
@@ -139,7 +139,7 @@ export default function Settings() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Company Name</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-darkSecondary mb-1.5">Company Name</label>
               <input
                 id="settings-company-name"
                 type="text"
@@ -151,9 +151,9 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-darkSecondary mb-1.5">
                 <span className="flex items-center gap-1.5"><Mail className="w-3 h-3" /> Company Email</span>
               </label>
               <input
@@ -166,7 +166,7 @@ export default function Settings() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-darkSecondary mb-1.5">
                 <span className="flex items-center gap-1.5"><Phone className="w-3 h-3" /> Company Phone</span>
               </label>
               <input
@@ -180,12 +180,12 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end pt-2 border-t border-app-border dark:border-navy-800">
             <button
               id="save-profile-btn"
               onClick={handleSaveProfile}
               disabled={savingProfile}
-              className="flex items-center gap-2 px-5 py-2.5 bg-copper hover:bg-copper-600 text-white rounded-xl text-sm font-semibold transition-all shadow-md shadow-copper-200/50 disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-3 bg-copper hover:bg-copper-hover active:bg-copper-600 text-white rounded-xl font-bold text-sm transition-all shadow-md active:translate-y-0 hover:-translate-y-0.5 disabled:opacity-50 w-full sm:w-auto justify-center"
             >
               <Save className="w-4 h-4" />
               {savingProfile ? 'Saving...' : 'Save Profile'}
@@ -195,29 +195,29 @@ export default function Settings() {
       </div>
 
       {/* Default Markups */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-card">
-        <div className="px-6 py-5 border-b border-slate-100">
+      <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card rounded-2xl overflow-hidden">
+        <div className="px-6 py-5 border-b border-app-border dark:border-navy-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center">
-              <Percent className="w-4 h-4 text-emerald-600" />
+            <div className="w-8 h-8 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-lg flex items-center justify-center">
+              <Percent className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Default Markup Rates</h2>
-              <p className="text-xs text-slate-400">Pre-filled into every new project</p>
+              <h2 className="text-sm sm:text-base font-sora font-bold text-text-primary dark:text-text-darkPrimary">Default Markup Rates</h2>
+              <p className="text-xs text-text-secondary dark:text-text-darkSecondary font-medium">Pre-filled into every new project</p>
             </div>
           </div>
         </div>
 
         <div className="p-6">
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             {[
               { label: 'Labor Markup', field: 'default_labor_markup', color: 'blue' },
               { label: 'Material Markup', field: 'default_material_markup', color: 'emerald' },
               { label: 'Equipment Markup', field: 'default_equipment_markup', color: 'amber' },
               { label: 'Default Tax Rate', field: 'default_tax_rate', color: 'violet' },
-            ].map(({ label, field, color }) => (
+            ].map(({ label, field }) => (
               <div key={field}>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">{label}</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-darkSecondary mb-1.5">{label}</label>
                 <div className="relative">
                   <input
                     id={`settings-${field}`}
@@ -227,24 +227,24 @@ export default function Settings() {
                     min="0"
                     max="100"
                     step="0.5"
-                    className={`${inputClass} pr-8`}
+                    className={`${inputClass} pr-10`}
                   />
-                  <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold ${color === 'blue' ? 'text-blue-500' : color === 'emerald' ? 'text-emerald-500' : color === 'amber' ? 'text-amber-500' : 'text-violet-500'}`}>%</span>
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-copper">%</span>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="bg-slate-50 rounded-xl p-4 mb-5 text-xs text-slate-500">
-            <strong className="text-slate-700">How this works:</strong> These rates are automatically copied into every new project you create. You can always override them per-project in the Estimator Workspace.
+          <div className="bg-slate-50 dark:bg-navy-950 rounded-xl p-4 mb-6 text-xs text-text-secondary dark:text-text-darkSecondary border border-app-border dark:border-navy-800">
+            <strong className="text-text-primary dark:text-text-darkPrimary font-bold block mb-1">How this works:</strong> These rates are automatically copied into every new project you create. You can always override them per-project in the Estimator Workspace.
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-2 border-t border-app-border dark:border-navy-800">
             <button
               id="save-markup-btn"
               onClick={handleSaveMarkup}
               disabled={savingMarkup}
-              className="flex items-center gap-2 px-5 py-2.5 bg-copper hover:bg-copper-600 text-white rounded-xl text-sm font-semibold transition-all shadow-md shadow-copper-200/50 disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-3 bg-copper hover:bg-copper-hover active:bg-copper-600 text-white rounded-xl font-bold text-sm transition-all shadow-md active:translate-y-0 hover:-translate-y-0.5 disabled:opacity-50 w-full sm:w-auto justify-center"
             >
               <Save className="w-4 h-4" />
               {savingMarkup ? 'Saving...' : 'Save Defaults'}

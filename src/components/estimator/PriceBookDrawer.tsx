@@ -65,158 +65,228 @@ export default function PriceBookDrawer({ isOpen, onClose, projectTrade, onAddIt
   if (!isOpen) return null;
 
   return (
-    <>
+    <div className="fixed inset-0 z-50 flex justify-end">
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div 
+        className="fixed inset-0 bg-navy-950/40 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
 
       {/* Drawer */}
-      <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-2xl z-50 flex flex-col animate-slide-in-right">
+      <div className="relative w-full max-w-lg h-full bg-white dark:bg-navy-900 border-l border-slate-200 dark:border-navy-800 shadow-2xl flex flex-col z-10 animate-slide-in-right">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <div className="p-6 border-b border-slate-100 dark:border-navy-800 flex items-center justify-between">
           <div>
-            <h3 className="font-bold text-slate-900 text-sm">Price Book</h3>
-            <p className="text-xs text-slate-400 mt-0.5">{filtered.length} items available</p>
+            <h2 className="text-lg font-bold font-sora text-slate-905 dark:text-white">Price Book</h2>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Quickly select or add items to your project estimate</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="p-1.5 bg-copper-50 text-copper rounded-lg hover:bg-copper-100 transition-colors"
-              title="Add custom item"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-            <button onClick={onClose} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+          <button 
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-navy-800 text-slate-400 dark:text-slate-500 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Add custom item form */}
-        {showAddForm && (
-          <div className="px-5 py-4 border-b border-slate-100 bg-copper-50/50 space-y-3">
-            <p className="text-xs font-semibold text-copper-700">Add Custom Item</p>
-            <input
-              type="text"
-              placeholder="Item name"
-              value={newItem.name}
-              onChange={e => setNewItem(p => ({ ...p, name: e.target.value }))}
-              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-copper-200 focus:border-copper-400"
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <div className="relative">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-xs">$</span>
-                <input
-                  type="number"
-                  placeholder="0.00"
-                  value={newItem.default_unit_price}
-                  onChange={e => setNewItem(p => ({ ...p, default_unit_price: parseFloat(e.target.value) || 0 }))}
-                  className="w-full pl-5 pr-2 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-copper-200"
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin space-y-6">
+          {showAddForm ? (
+            <div className="space-y-4 border border-slate-100 dark:border-navy-800 bg-slate-50/50 dark:bg-navy-950/20 rounded-2xl p-5 animate-scale-in">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold font-sora text-slate-800 dark:text-slate-200">Create New Catalog Item</h3>
+                <button 
+                  type="button" 
+                  onClick={() => setShowAddForm(false)}
+                  className="text-xs text-copper hover:text-copper-hover font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Item Name *</label>
+                <input 
+                  type="text"
+                  placeholder="e.g. Copper Pipe 1/2 inch"
+                  value={newItem.name || ''}
+                  onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 bg-white dark:bg-navy-950 border border-slate-200 dark:border-navy-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:border-copper focus:ring-1 focus:ring-copper/40 transition-all"
                 />
               </div>
-              <select
-                value={newItem.unit}
-                onChange={e => setNewItem(p => ({ ...p, unit: e.target.value }))}
-                className="px-2 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-copper-200"
-              >
-                {['ea','hr','ft','lf','sq','sqft','gal','lb','cy','day','visit','job'].map(u => (
-                  <option key={u} value={u}>{u}</option>
-                ))}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                value={newItem.category}
-                onChange={e => setNewItem(p => ({ ...p, category: e.target.value as CategoryType }))}
-                className="px-2 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-copper-200"
-              >
-                {['material','labor','equipment','other'].map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Category</label>
+                  <select
+                    value={newItem.category}
+                    onChange={(e) => setNewItem(prev => ({ ...prev, category: e.target.value as CategoryType }))}
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-navy-950 border border-slate-200 dark:border-navy-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:border-copper focus:ring-1 focus:ring-copper/40 transition-all"
+                  >
+                    <option value="material">Material</option>
+                    <option value="labor">Labor</option>
+                    <option value="equipment">Equipment</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Unit</label>
+                  <input 
+                    type="text"
+                    placeholder="ea, hr, ft, etc."
+                    value={newItem.unit || ''}
+                    onChange={(e) => setNewItem(prev => ({ ...prev, unit: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-navy-950 border border-slate-200 dark:border-navy-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:border-copper focus:ring-1 focus:ring-copper/40 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Cost/Unit ($)</label>
+                  <input 
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={newItem.default_unit_price || ''}
+                    onChange={(e) => setNewItem(prev => ({ ...prev, default_unit_price: parseFloat(e.target.value) || 0 }))}
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-navy-950 border border-slate-200 dark:border-navy-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:border-copper focus:ring-1 focus:ring-copper/40 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">Default Markup (%)</label>
+                  <input 
+                    type="number"
+                    placeholder="15"
+                    value={newItem.default_markup || ''}
+                    onChange={(e) => setNewItem(prev => ({ ...prev, default_markup: parseInt(e.target.value) || 0 }))}
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-navy-950 border border-slate-200 dark:border-navy-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:border-copper focus:ring-1 focus:ring-copper/40 transition-all"
+                  />
+                </div>
+              </div>
+
               <button
+                type="button"
                 onClick={handleAddCustom}
-                className="py-2 bg-copper text-white rounded-lg text-xs font-semibold hover:bg-copper-600 transition-colors"
+                className="w-full mt-2 py-3 bg-copper hover:bg-copper-hover text-white text-sm font-semibold rounded-xl transition-all duration-250 flex items-center justify-center gap-2 shadow-sm"
               >
-                Save Item
+                <Plus className="w-4 h-4" /> Save to Price Book
               </button>
             </div>
-          </div>
-        )}
-
-        {/* Search */}
-        <div className="px-5 py-3 border-b border-slate-100">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search items..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-8 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 focus:ring-2 focus:ring-copper-200"
-            />
-          </div>
-        </div>
-
-        {/* Category tabs */}
-        <div className="flex gap-1 px-5 py-2 border-b border-slate-100 overflow-x-auto">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat.value}
-              onClick={() => setCategoryFilter(cat.value)}
-              className={`flex-shrink-0 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                categoryFilter === cat.value
-                  ? 'bg-copper text-white shadow-sm shadow-copper-100'
-                  : 'text-slate-500 hover:bg-slate-100'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Items list */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-1">
-          {filtered.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 text-sm">No items found</div>
           ) : (
-            filtered.map(item => (
-              <button
-                key={item.id}
-                onClick={() => handleUseItem(item)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-copper-50/50 group transition-all text-left"
-              >
-                <div className={`w-1.5 h-8 rounded-full flex-shrink-0 ${getCategoryDot(item.category)}`} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-800 truncate">{item.name}</span>
-                    {item.is_global && (
-                      <span className="flex-shrink-0 px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded text-xs">Global</span>
-                    )}
+            <div className="space-y-4">
+              {/* Search and Filters */}
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search price book..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:border-copper focus:ring-1 focus:ring-copper/40 transition-all"
+                  />
+                </div>
+
+                {/* Category Tags */}
+                <div className="flex flex-wrap gap-1.5">
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.value}
+                      onClick={() => setCategoryFilter(cat.value)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide border transition-all ${
+                        categoryFilter === cat.value
+                          ? 'bg-navy-900 dark:bg-white text-white dark:text-navy-950 border-navy-900 dark:border-white shadow-sm'
+                          : 'bg-white dark:bg-navy-950 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-navy-800 hover:bg-slate-50 dark:hover:bg-navy-800'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                  
+                  <button
+                    onClick={() => setShowAddForm(true)}
+                    className="ml-auto flex items-center gap-1 text-xs font-bold text-copper hover:text-copper-hover transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Custom
+                  </button>
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div className="space-y-2.5">
+                {filtered.length === 0 ? (
+                  <div className="text-center py-10 border border-dashed border-slate-200 dark:border-navy-800 rounded-2xl">
+                    <span className="text-2xl">📖</span>
+                    <p className="text-sm font-semibold text-slate-600 dark:text-slate-400 mt-2">No matching items</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Try another category or add a new custom item.</p>
                   </div>
-                  <div className="text-xs text-slate-400 mt-0.5 capitalize">{item.category} · {item.unit}</div>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <div className="text-xs font-bold text-slate-900">${item.default_unit_price.toFixed(2)}</div>
-                  <div className="text-xs text-slate-400">/{item.unit}</div>
-                </div>
-                <div className="text-copper-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Plus className="w-4 h-4" />
-                </div>
-              </button>
-            ))
+                ) : (
+                  filtered.map((item) => {
+                    const isMatchedTrade = item.trade === projectTrade;
+                    return (
+                      <div 
+                        key={item.id} 
+                        className={`p-4 border rounded-xl flex items-center justify-between transition-all group ${
+                          isMatchedTrade 
+                            ? 'bg-slate-50/50 dark:bg-navy-950/20 border-slate-200 dark:border-navy-800/80' 
+                            : 'bg-white dark:bg-navy-900 border-slate-100 dark:border-navy-800/50'
+                        }`}
+                      >
+                        <div className="space-y-1 pr-4 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-bold text-slate-800 dark:text-slate-200 group-hover:text-copper transition-colors">
+                              {item.name}
+                            </span>
+                            {item.is_global && (
+                              <span className="bg-slate-100 dark:bg-navy-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                Global
+                              </span>
+                            )}
+                            {isMatchedTrade && (
+                              <span className="bg-copper-100/60 dark:bg-copper-900/30 text-copper-700 dark:text-copper-300 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                Trade Match
+                              </span>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${CATEGORY_COLORS[item.category] || 'category-other'}`}>
+                              {item.category}
+                            </span>
+                            <span>•</span>
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">
+                              ${item.default_unit_price.toFixed(2)} / {item.unit}
+                            </span>
+                            {item.default_markup > 0 && (
+                              <>
+                                <span>•</span>
+                                <span>{item.default_markup}% markup</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleUseItem(item)}
+                          className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-navy-950 hover:bg-copper hover:text-white dark:hover:bg-copper dark:hover:text-white border border-slate-200 dark:border-navy-800 flex items-center justify-center text-slate-600 dark:text-slate-400 transition-all shadow-sm"
+                          title="Add to estimate"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
-function getCategoryDot(cat: CategoryType): string {
-  const map: Record<CategoryType, string> = {
-    material: 'bg-emerald-400',
-    labor: 'bg-blue-400',
-    equipment: 'bg-amber-400',
-    other: 'bg-slate-400',
-  };
-  return map[cat];
-}
+

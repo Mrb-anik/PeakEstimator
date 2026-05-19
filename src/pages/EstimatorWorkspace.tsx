@@ -116,18 +116,18 @@ export default function EstimatorWorkspace() {
 
   if (projLoading || itemsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 border-4 border-copper-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-navy-950">
+        <div className="w-8 h-8 border-4 border-copper border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!project) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-navy-950">
         <div className="text-center">
-          <p className="text-slate-500">Project not found</p>
-          <button onClick={() => navigate('/projects')} className="mt-3 text-copper hover:text-copper-600 text-sm font-semibold">
+          <p className="text-slate-500 dark:text-slate-400 font-inter">Project not found</p>
+          <button onClick={() => navigate('/projects')} className="mt-3 text-copper hover:text-copper-hover text-sm font-semibold transition-all font-sora">
             ← Back to projects
           </button>
         </div>
@@ -136,13 +136,13 @@ export default function EstimatorWorkspace() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 animate-fade-in">
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-navy-950 animate-fade-in transition-colors duration-200">
       {/* Top bar */}
-      <div className="sticky top-0 z-30 bg-white border-b border-slate-100 shadow-sm">
+      <div className="sticky top-0 z-30 bg-white dark:bg-navy-900 border-b border-slate-100 dark:border-navy-800/80 shadow-soft">
         <div className="flex items-center gap-4 px-6 py-3.5">
           <button
             onClick={() => navigate('/projects')}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
+            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-500 dark:hover:text-slate-200 dark:hover:bg-navy-800 rounded-lg transition-all"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -150,10 +150,10 @@ export default function EstimatorWorkspace() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-lg">{TRADE_EMOJIS[project.trade]}</span>
-              <h1 className="text-base font-bold text-slate-900 truncate">{project.name}</h1>
+              <h1 className="text-base font-bold text-slate-900 dark:text-white truncate font-sora">{project.name}</h1>
             </div>
             {project.client_name && (
-              <p className="text-xs text-slate-400 pl-7">Client: {project.client_name}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 pl-7 font-inter">Client: {project.client_name}</p>
             )}
           </div>
 
@@ -162,17 +162,17 @@ export default function EstimatorWorkspace() {
             <div className="relative group">
               <button
                 id="status-dropdown"
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all ${STATUS_LABEL_COLORS[project.status]}`}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${STATUS_LABEL_COLORS[project.status]}`}
               >
                 <span className="capitalize">{project.status}</span>
                 <ChevronDown className="w-3.5 h-3.5 opacity-60" />
               </button>
-              <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-100 py-1 w-36 hidden group-hover:block z-50">
+              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-navy-900 rounded-xl shadow-premium border border-slate-100 dark:border-navy-800 py-1 w-36 hidden group-hover:block z-50">
                 {STATUSES.map(s => (
                   <button
                     key={s}
                     onClick={() => handleStatusChange(s)}
-                    className={`w-full text-left px-3.5 py-2 text-xs font-semibold capitalize hover:bg-slate-50 transition-colors ${project.status === s ? 'text-copper bg-copper-50' : 'text-slate-700'}`}
+                    className={`w-full text-left px-3.5 py-2 text-xs font-semibold capitalize hover:bg-slate-50 dark:hover:bg-navy-800 transition-colors ${project.status === s ? 'text-copper dark:text-copper bg-copper-50/50 dark:bg-copper-950/30' : 'text-slate-700 dark:text-slate-300'}`}
                   >
                     {s}
                   </button>
@@ -183,7 +183,7 @@ export default function EstimatorWorkspace() {
             <button
               id="share-btn"
               onClick={handleCopyLink}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-semibold hover:bg-slate-50 transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold hover:bg-slate-50 dark:hover:bg-navy-800 transition-all shadow-sm"
             >
               <Share2 className="w-3.5 h-3.5" />
               Share
@@ -193,7 +193,7 @@ export default function EstimatorWorkspace() {
               id="export-pdf-topbar"
               onClick={handleExportPDF}
               disabled={exportingPDF}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-copper hover:bg-copper-600 text-white rounded-xl text-xs font-semibold transition-all shadow-md shadow-copper-200 disabled:opacity-60"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-copper hover:bg-copper-hover text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-copper/10 disabled:opacity-60"
             >
               {exportingPDF ? 'Generating...' : '📄 Export PDF'}
             </button>
@@ -202,9 +202,9 @@ export default function EstimatorWorkspace() {
       </div>
 
       {/* Main content — single col on mobile, 3-col on desktop */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-5 p-4 sm:p-6 max-w-7xl w-full mx-auto">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 sm:p-6 max-w-7xl w-full mx-auto">
         {/* Line items */}
-        <div className="col-span-1 lg:col-span-2 space-y-4">
+        <div className="col-span-1 lg:col-span-2 space-y-6">
           <LineItemsTable
             items={items}
             onAdd={handleAddItem}
@@ -222,7 +222,7 @@ export default function EstimatorWorkspace() {
 
         {/* Totals sidebar — stacks below on mobile, sticky column on desktop */}
         <div className="col-span-1">
-          <div className="lg:sticky lg:top-[72px]">
+          <div className="lg:sticky lg:top-[88px]">
             <TotalsSidebar
               totals={totals}
               notes={notes}

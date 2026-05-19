@@ -40,6 +40,7 @@ export interface Project {
   notes: string;
   share_token: string;
   client_approved_at: string | null;
+  signature_data?: string | null;
   client_message: string;
   follow_up_sent_at: string | null;
   project_address: string;

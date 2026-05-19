@@ -56,7 +56,7 @@ function SignaturePad({
       ctx.beginPath();
       ctx.moveTo(lastPos.current.x, lastPos.current.y);
       ctx.lineTo(pos.x, pos.y);
-      ctx.strokeStyle = '#1E293B';
+      ctx.strokeStyle = document.documentElement.classList.contains('dark') ? '#C58B5C' : '#1E293B';
       ctx.lineWidth = 2.5;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -106,7 +106,9 @@ function SignaturePad({
     <div className="space-y-2">
       <div
         className={`relative rounded-xl border-2 ${
-          signed ? 'border-emerald-300 bg-emerald-50/30' : 'border-dashed border-slate-300 bg-slate-50'
+          signed 
+            ? 'border-emerald-500 bg-emerald-50/10 dark:bg-emerald-950/20' 
+            : 'border-dashed border-slate-300 dark:border-navy-800 bg-slate-50 dark:bg-navy-950/40'
         } transition-colors overflow-hidden`}
         style={{ height: 96 }}
       >
@@ -118,7 +120,7 @@ function SignaturePad({
         />
         {!signed && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="text-xs text-slate-400 select-none">✍️ Sign here</span>
+            <span className="text-xs text-slate-400 dark:text-slate-500 select-none">✍️ Sign here</span>
           </div>
         )}
       </div>
@@ -290,29 +292,29 @@ export default function ClientPortal() {
   const isApproved = !!project.client_approved_at;
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-100 dark:bg-navy-950 font-inter text-slate-800 dark:text-slate-100 transition-colors duration-200">
       {/* ── Header ── */}
-      <div style={{ background: '#0F172A' }} className="w-full">
-        <div className="max-w-4xl mx-auto px-8 py-8 flex items-center justify-between">
+      <div className="w-full bg-navy-900 dark:bg-navy-950 border-b border-navy-800 dark:border-navy-900 transition-colors">
+        <div className="max-w-4xl mx-auto px-8 py-8 flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             {project.company_logo ? (
-              <img src={project.company_logo} alt="Company logo" className="w-14 h-14 object-contain rounded-xl bg-white p-1.5" />
+              <img src={project.company_logo} alt="Company logo" className="w-14 h-14 object-contain rounded-xl bg-white p-1.5 shadow-sm" />
             ) : (
-              <div className="w-14 h-14 bg-navy-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-xl">
+              <div className="w-14 h-14 bg-navy-800 dark:bg-navy-900 border border-navy-700/50 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-xl font-sora">
                   {(project.company_name || 'C').charAt(0)}
                 </span>
               </div>
             )}
             <div>
-              <div className="text-white font-bold text-xl">{project.company_name || 'Your Company'}</div>
-              <div className="text-slate-400 text-sm mt-0.5">
+              <div className="text-white font-bold text-xl font-sora">{project.company_name || 'Your Company'}</div>
+              <div className="text-slate-400 text-sm mt-0.5 font-medium">
                 {project.company_email} {project.company_phone && `· ${project.company_phone}`}
               </div>
             </div>
           </div>
-          <div className="text-right">
-            <div style={{ color: '#C07840' }} className="text-2xl font-bold tracking-wide">PROPOSAL</div>
+          <div className="text-left">
+            <div className="text-2xl font-bold font-sora tracking-wide text-copper">PROPOSAL</div>
             <div className="text-slate-400 text-sm mt-0.5">
               Date: {new Date(project.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </div>
@@ -326,23 +328,23 @@ export default function ClientPortal() {
       </div>
 
       {/* ── Client + Project Info ── */}
-      <div className="bg-slate-50 border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-8 py-6 grid grid-cols-2 gap-8">
+      <div className="bg-white dark:bg-navy-900 border-b border-slate-200 dark:border-navy-800 transition-colors">
+        <div className="max-w-4xl mx-auto px-8 py-6 grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Prepared For</div>
-            <div className="text-xl font-bold text-slate-900">{project.client_name}</div>
-            {project.client_email && <div className="text-sm text-slate-500 mt-0.5">{project.client_email}</div>}
-            {project.client_phone && <div className="text-sm text-slate-500">{project.client_phone}</div>}
+            <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Prepared For</div>
+            <div className="text-xl font-bold font-sora text-slate-900 dark:text-white">{project.client_name}</div>
+            {project.client_email && <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{project.client_email}</div>}
+            {project.client_phone && <div className="text-sm text-slate-500 dark:text-slate-400">{project.client_phone}</div>}
           </div>
           <div>
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Project</div>
+            <div className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1.5">Project Details</div>
             <div className="flex items-center gap-2">
-              <span>{TRADE_EMOJIS[project.trade]}</span>
-              <span className="text-xl font-bold text-slate-900">{project.name}</span>
+              <span className="text-xl">{TRADE_EMOJIS[project.trade]}</span>
+              <span className="text-xl font-bold font-sora text-slate-900 dark:text-white">{project.name}</span>
             </div>
-            {project.project_address && <div className="text-sm text-slate-500 mt-0.5">{project.project_address}</div>}
+            {project.project_address && <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{project.project_address}</div>}
             {project.start_date && (
-              <div className="text-sm text-slate-500">
+              <div className="text-sm text-slate-500 dark:text-slate-400">
                 Start: {new Date(project.start_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </div>
             )}
@@ -353,11 +355,11 @@ export default function ClientPortal() {
       <div className="max-w-4xl mx-auto px-8 py-8 space-y-6">
         {/* ── Already approved banner ── */}
         {isApproved && (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-6 py-4 flex items-center gap-3">
+          <div className="bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-250 dark:border-emerald-800/65 rounded-2xl px-6 py-4 flex items-center gap-3">
             <span className="text-2xl">✅</span>
             <div>
-              <div className="text-emerald-800 font-bold text-sm">This proposal has been approved</div>
-              <div className="text-emerald-600 text-xs mt-0.5">
+              <div className="text-emerald-800 dark:text-emerald-300 font-bold text-sm font-sora animate-fade-in">This proposal has been approved</div>
+              <div className="text-emerald-600 dark:text-emerald-400 text-xs mt-0.5">
                 Approved on {new Date(project.client_approved_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </div>
             </div>
@@ -366,102 +368,104 @@ export default function ClientPortal() {
 
         {/* ── Submitted confirmation ── */}
         {submitted && (
-          <div className="bg-copper-50/50 border border-copper-200 rounded-2xl px-6 py-5 text-center">
+          <div className="bg-copper-50/30 dark:bg-copper-950/10 border border-copper-200 dark:border-copper-800/80 rounded-2xl px-6 py-5 text-center">
             <div className="text-3xl mb-2">🎉</div>
-            <div className="text-copper-800 font-bold">
+            <div className="text-copper font-bold font-sora">
               {action === null ? 'Response submitted!' : 'Message sent!'}
             </div>
-            <div className="text-copper-700 text-sm mt-1">
+            <div className="text-slate-600 dark:text-slate-300 text-sm mt-1">
               {project.company_name || 'The contractor'} has been notified and will be in touch shortly.
             </div>
           </div>
         )}
 
         {/* ── Line Items ── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="bg-slate-800 px-5 py-3 grid grid-cols-12 gap-2">
-            <div className="col-span-5 text-xs font-semibold text-slate-300 uppercase tracking-wide">Description</div>
-            <div className="col-span-2 text-xs font-semibold text-slate-300 uppercase tracking-wide">Category</div>
-            <div className="col-span-1 text-xs font-semibold text-slate-300 uppercase tracking-wide text-center">Qty</div>
-            <div className="col-span-1 text-xs font-semibold text-slate-300 uppercase tracking-wide text-center">Unit</div>
-            <div className="col-span-1 text-xs font-semibold text-slate-300 uppercase tracking-wide text-right">Unit Price</div>
-            <div className="col-span-2 text-xs font-semibold text-slate-300 uppercase tracking-wide text-right">Total</div>
-          </div>
-
-          {items.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 text-sm">No line items in this proposal</div>
-          ) : (
-            <div className="divide-y divide-slate-50">
-              {items.map((item, i) => (
-                <div
-                  key={item.id}
-                  className={`grid grid-cols-12 gap-2 px-5 py-3.5 items-center ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}
-                >
-                  <div className="col-span-5 text-sm text-slate-800 font-medium">{item.description || '—'}</div>
-                  <div className="col-span-2">
-                    <span className={`px-2 py-0.5 rounded text-xs font-semibold capitalize ${getCategoryClass(item.category)}`}>
-                      {item.category}
-                    </span>
-                  </div>
-                  <div className="col-span-1 text-sm text-slate-600 text-center">{item.quantity}</div>
-                  <div className="col-span-1 text-sm text-slate-500 text-center">{item.unit}</div>
-                  <div className="col-span-1 text-sm text-slate-700 text-right">${item.unit_price.toFixed(2)}</div>
-                  <div className="col-span-2 text-sm font-bold text-slate-900 text-right">
-                    {formatCurrency(item.quantity * item.unit_price)}
-                  </div>
-                </div>
-              ))}
+        <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-navy-800 shadow-soft bg-white dark:bg-navy-900 transition-colors scrollbar-thin">
+          <div className="min-w-[850px] divide-y divide-slate-100 dark:divide-navy-800/50">
+            <div className="bg-slate-900 dark:bg-navy-950 px-5 py-3.5 grid grid-cols-12 gap-2">
+              <div className="col-span-5 text-xs font-bold text-slate-300 dark:text-slate-400 uppercase tracking-wider">Description</div>
+              <div className="col-span-2 text-xs font-bold text-slate-300 dark:text-slate-400 uppercase tracking-wider">Category</div>
+              <div className="col-span-1 text-xs font-bold text-slate-300 dark:text-slate-400 uppercase tracking-wider text-center">Qty</div>
+              <div className="col-span-1 text-xs font-bold text-slate-300 dark:text-slate-400 uppercase tracking-wider text-center">Unit</div>
+              <div className="col-span-1 text-xs font-bold text-slate-300 dark:text-slate-400 uppercase tracking-wider text-right">Unit Price</div>
+              <div className="col-span-2 text-xs font-bold text-slate-300 dark:text-slate-400 uppercase tracking-wider text-right">Total</div>
             </div>
-          )}
+
+            {items.length === 0 ? (
+              <div className="py-12 text-center text-slate-400 dark:text-slate-500 text-sm">No line items in this proposal</div>
+            ) : (
+              <div className="divide-y divide-slate-50 dark:divide-navy-800/30">
+                {items.map((item, i) => (
+                  <div
+                    key={item.id}
+                    className={`grid grid-cols-12 gap-2 px-5 py-3.5 items-center ${i % 2 === 0 ? 'bg-white dark:bg-navy-900' : 'bg-slate-50/20 dark:bg-navy-950/10'}`}
+                  >
+                    <div className="col-span-5 text-sm text-slate-800 dark:text-slate-200 font-medium">{item.description || '—'}</div>
+                    <div className="col-span-2">
+                      <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${getCategoryClass(item.category)}`}>
+                        {item.category}
+                      </span>
+                    </div>
+                    <div className="col-span-1 text-sm text-slate-600 dark:text-slate-400 text-center">{item.quantity}</div>
+                    <div className="col-span-1 text-sm text-slate-500 dark:text-slate-500 text-center">{item.unit}</div>
+                    <div className="col-span-1 text-sm text-slate-700 dark:text-slate-300 text-right">${item.unit_price.toFixed(2)}</div>
+                    <div className="col-span-2 text-sm font-bold text-slate-900 dark:text-white text-right">
+                      {formatCurrency(item.quantity * item.unit_price)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ── Totals ── */}
         <div className="flex justify-end">
           <div className="w-72 space-y-2">
-            <div className="flex justify-between py-2 px-4 bg-slate-100 rounded-xl">
-              <span className="text-sm text-slate-600">Subtotal</span>
-              <span className="text-sm font-semibold text-slate-800">{formatCurrency(totals.subtotal)}</span>
+            <div className="flex justify-between py-2 px-4 bg-slate-100 dark:bg-navy-950/40 rounded-xl transition-colors">
+              <span className="text-sm text-slate-600 dark:text-slate-400">Subtotal</span>
+              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{formatCurrency(totals.subtotal)}</span>
             </div>
             {totals.marginAmount > 0 && (
-              <div className="flex justify-between py-2 px-4 bg-white rounded-xl border border-slate-100">
-                <span className="text-sm text-slate-500">Overhead &amp; Profit</span>
-                <span className="text-sm font-medium text-slate-700">{formatCurrency(totals.marginAmount)}</span>
+              <div className="flex justify-between py-2 px-4 bg-white dark:bg-navy-900 rounded-xl border border-slate-100 dark:border-navy-800 transition-colors">
+                <span className="text-sm text-slate-500 dark:text-slate-400">Overhead &amp; Profit</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatCurrency(totals.marginAmount)}</span>
               </div>
             )}
             {totals.taxAmount > 0 && (
-              <div className="flex justify-between py-2 px-4 bg-slate-100 rounded-xl">
-                <span className="text-sm text-slate-500">Tax</span>
-                <span className="text-sm font-medium text-slate-700">{formatCurrency(totals.taxAmount)}</span>
+              <div className="flex justify-between py-2 px-4 bg-slate-100 dark:bg-navy-950/40 rounded-xl transition-colors">
+                <span className="text-sm text-slate-500 dark:text-slate-400">Tax</span>
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{formatCurrency(totals.taxAmount)}</span>
               </div>
             )}
-            <div className="flex justify-between py-3.5 px-4 bg-navy-600 rounded-xl">
-              <span className="text-sm font-bold text-white">TOTAL</span>
-              <span className="text-lg font-bold text-white">{formatCurrency(totals.total)}</span>
+            <div className="flex justify-between py-3.5 px-4 bg-navy-900 dark:bg-navy-800 border border-navy-800 dark:border-navy-700 rounded-xl shadow-sm transition-colors">
+              <span className="text-sm font-bold text-white uppercase tracking-wider">TOTAL VALUE</span>
+              <span className="text-lg font-bold text-copper">{formatCurrency(totals.total)}</span>
             </div>
           </div>
         </div>
 
         {/* ── Notes ── */}
         {project.notes && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <h3 className="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wide">Notes &amp; Scope of Work</h3>
-            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{project.notes}</p>
+          <div className="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200 dark:border-navy-800 p-6 transition-colors">
+            <h3 className="text-sm font-bold font-sora text-slate-800 dark:text-slate-200 mb-3 uppercase tracking-wider">Notes &amp; Scope of Work</h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">{project.notes}</p>
           </div>
         )}
 
         {/* ── Signature Block ── PLACED BEFORE action buttons ── */}
         {!isApproved && !submitted && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <h3 className="text-sm font-bold text-slate-800 mb-1 uppercase tracking-wide">Signatures</h3>
-            <p className="text-xs text-slate-400 mb-5">By signing, you acknowledge and agree to the terms of this proposal.</p>
+          <div className="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200 dark:border-navy-800 p-6 transition-colors">
+            <h3 className="text-sm font-bold font-sora text-slate-800 dark:text-white mb-1 uppercase tracking-wider">Signatures</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mb-5">By signing, you acknowledge and agree to the terms of this proposal.</p>
 
-            <div className="grid grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Client Signature */}
-              <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+              <div className="space-y-1">
+                <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2.5">
                   Client Signature
                   {action === 'approve' && (
-                    <span className="ml-1.5 text-red-400">*required</span>
+                    <span className="ml-1.5 text-red-550 dark:text-red-400 font-semibold">*required</span>
                   )}
                 </div>
                 <SignaturePad
@@ -470,27 +474,27 @@ export default function ClientPortal() {
                   signed={!!signatureDataUrl}
                 />
                 {signatureError && (
-                  <p className="text-xs text-red-500 mt-1.5">Please sign before approving.</p>
+                  <p className="text-xs text-red-505 mt-1.5 font-medium animate-pulse">Please sign before approving.</p>
                 )}
-                <div className="mt-2 border-t border-slate-200 pt-2">
-                  <div className="text-xs text-slate-400">Signature &amp; Date: {new Date().toLocaleDateString()}</div>
+                <div className="mt-2 border-t border-slate-100 dark:border-navy-800 pt-2.5">
+                  <div className="text-xs text-slate-400 dark:text-slate-500 font-medium">Signature &amp; Date: {new Date().toLocaleDateString()}</div>
                 </div>
               </div>
 
               {/* Authorized By */}
-              <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Authorized By</div>
+              <div className="space-y-1">
+                <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2.5">Authorized By</div>
                 <div
-                  className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center"
+                  className="rounded-xl border-2 border-dashed border-slate-200 dark:border-navy-850 bg-slate-50 dark:bg-navy-950/40 flex items-center justify-center transition-colors"
                   style={{ height: 96 }}
                 >
-                  <div className="text-center">
-                    <div className="text-sm font-bold text-slate-600">{project.company_name || 'Company Representative'}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">Contractor</div>
+                  <div className="text-center p-4">
+                    <div className="text-sm font-bold text-slate-600 dark:text-slate-350 font-sora truncate max-w-[250px]">{project.company_name || 'Company Representative'}</div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 uppercase tracking-wider font-bold">Contractor Representative</div>
                   </div>
                 </div>
-                <div className="mt-2 border-t border-slate-200 pt-2">
-                  <div className="text-xs text-slate-400">{project.company_name || 'Authorized Representative'}</div>
+                <div className="mt-2 border-t border-slate-100 dark:border-navy-800 pt-2.5">
+                  <div className="text-xs text-slate-400 dark:text-slate-500 font-medium">{project.company_name || 'Authorized Representative'}</div>
                 </div>
               </div>
             </div>
@@ -499,17 +503,29 @@ export default function ClientPortal() {
 
         {/* ── Signature Block (approved state) ── */}
         {(isApproved || submitted) && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6">
-            <div className="grid grid-cols-2 gap-8">
+          <div className="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200 dark:border-navy-800 p-6 transition-colors">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">Client Signature</div>
-                <div className="border-b-2 border-slate-300 mb-2 pb-6" />
-                <div className="text-xs text-slate-400">Signature &amp; Date</div>
+                <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4">Client Signature</div>
+                {project.signature_data ? (
+                  <div className="border border-slate-150 dark:border-navy-800 bg-slate-50 dark:bg-navy-950 rounded-xl p-2 flex items-center justify-center animate-fade-in" style={{ height: 96 }}>
+                    <img src={project.signature_data} alt="Client Signature" className="max-h-full dark:invert transition-colors" />
+                  </div>
+                ) : (
+                  <div className="border-b border-slate-300 dark:border-navy-800 mb-2 pb-6" />
+                )}
+                <div className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-2">
+                  Signature &amp; Date: {project.client_approved_at ? new Date(project.client_approved_at).toLocaleDateString() : 'N/A'}
+                </div>
               </div>
               <div>
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-4">Authorized By</div>
-                <div className="border-b-2 border-slate-300 mb-2 pb-6" />
-                <div className="text-xs text-slate-400">{project.company_name || 'Company Representative'}</div>
+                <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4">Authorized By</div>
+                <div className="border-b-2 border-slate-200 dark:border-navy-800 mb-2 pb-6 flex items-end justify-center" style={{ height: 96 }}>
+                  <span className="text-slate-500 dark:text-slate-400 font-sora font-semibold text-sm italic mb-2">
+                    {project.company_name || 'Authorized Representative'}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-2">{project.company_name || 'Company Representative'}</div>
               </div>
             </div>
           </div>
@@ -517,48 +533,48 @@ export default function ClientPortal() {
 
         {/* ── Action Buttons ── (AFTER signature) */}
         {!submitted && !isApproved && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
-            <h3 className="text-sm font-bold text-slate-800">Your Response</h3>
+          <div className="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200 dark:border-navy-800 p-6 space-y-4 transition-colors">
+            <h3 className="text-sm font-bold font-sora text-slate-800 dark:text-white uppercase tracking-wider">Your Response</h3>
 
             <div className="grid grid-cols-2 gap-3">
               <button
                 id="approve-bid-btn"
                 onClick={() => setAction(action === 'approve' ? null : 'approve')}
-                className={`py-3 rounded-xl text-sm font-bold transition-all border-2 ${
+                className={`py-3.5 rounded-xl text-sm font-bold transition-all border flex items-center justify-center gap-2 ${
                   action === 'approve'
-                    ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-200'
-                    : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                    ? 'bg-emerald-650 border-emerald-600 hover:bg-emerald-705 text-white shadow-sm'
+                    : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/50'
                 }`}
               >
-                ✅ Approve This Bid
+                Approve Proposal
               </button>
               <button
                 id="request-changes-btn"
                 onClick={() => setAction(action === 'changes' ? null : 'changes')}
-                className={`py-3 rounded-xl text-sm font-bold transition-all border-2 ${
+                className={`py-3.5 rounded-xl text-sm font-bold transition-all border flex items-center justify-center gap-2 ${
                   action === 'changes'
-                    ? 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-200'
-                    : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                    ? 'bg-amber-500 border-amber-500 hover:bg-amber-600 text-white shadow-sm'
+                    : 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/50'
                 }`}
               >
-                ✏️ Request Changes
+                Request Changes
               </button>
             </div>
 
             {action && (
-              <div className="space-y-3">
+              <div className="space-y-3 animate-fade-in">
                 {action === 'approve' && !signatureDataUrl && (
-                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                  <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/60 rounded-xl px-4 py-3">
                     <span className="text-amber-500 mt-0.5">⚠️</span>
-                    <p className="text-xs text-amber-700">
-                      Please scroll up and sign the proposal above before confirming approval.
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                      Please scroll up and sign the proposal in the "Signatures" section before confirming approval.
                     </p>
                   </div>
                 )}
                 {action === 'approve' && signatureDataUrl && (
-                  <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/65 rounded-xl px-4 py-3">
                     <span className="text-emerald-500">✅</span>
-                    <p className="text-xs text-emerald-700 font-medium">Signature captured. You're ready to approve.</p>
+                    <p className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold animate-fade-in">Signature captured. You are ready to approve.</p>
                   </div>
                 )}
                 <textarea
@@ -567,26 +583,26 @@ export default function ClientPortal() {
                   rows={4}
                   placeholder={
                     action === 'approve'
-                      ? 'Optional: Add a message for the contractor...'
-                      : 'Describe the changes you need... (required)'
+                      ? 'Optional: Add a note or reference number for the contractor...'
+                      : 'Describe the modifications or questions you have... (required)'
                   }
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 focus:ring-2 focus:ring-copper-200 focus:border-copper-400 resize-none transition-all"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:border-copper focus:ring-1 focus:ring-copper/40 resize-none transition-all"
                 />
                 <button
                   id="submit-response-btn"
                   onClick={action === 'approve' ? handleApprove : handleRequestChanges}
                   disabled={submitting}
-                  className={`w-full py-3 rounded-xl text-sm font-bold transition-all shadow-md disabled:opacity-50 ${
+                  className={`w-full py-3.5 rounded-xl text-sm font-bold transition-all shadow-sm disabled:opacity-50 ${
                     action === 'approve'
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
-                      : 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-200'
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      : 'bg-amber-500 hover:bg-amber-600 text-white'
                   }`}
                 >
                   {submitting
                     ? 'Submitting…'
                     : action === 'approve'
                     ? 'Confirm Approval'
-                    : 'Send Changes Request'}
+                    : 'Submit Changes Request'}
                 </button>
               </div>
             )}
@@ -594,9 +610,9 @@ export default function ClientPortal() {
         )}
 
         {/* ── Footer ── */}
-        <div className="bg-navy-900 rounded-2xl px-6 py-4 text-center">
-          <div className="text-slate-400 text-xs">
-            {project.company_name} · Powered by PeakEstimator · {new Date().getFullYear()}
+        <div className="bg-navy-900 dark:bg-navy-950 border border-navy-800 dark:border-navy-900 rounded-2xl px-6 py-4 text-center transition-colors">
+          <div className="text-slate-400 dark:text-slate-500 text-xs font-semibold">
+            {project.company_name} · Powered by ZenBid · {new Date().getFullYear()}
           </div>
         </div>
       </div>

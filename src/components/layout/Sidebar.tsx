@@ -1,9 +1,9 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, BookOpen, Settings, LogOut, ShieldAlert, X, Menu } from 'lucide-react';
+import { LayoutDashboard, Briefcase, BookOpen, Settings, LogOut, ShieldAlert, X, Menu, Sun, Moon } from 'lucide-react';
 import { supabase } from '../../api/supabase';
 import { useAppStore } from '../../store/useAppStore';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const navItems = [
   { path: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
@@ -16,10 +16,10 @@ function PeakLogo({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect width="64" height="64" rx="12" fill="#0F172A"/>
-      <polygon points="32,8 6,56 58,56" fill="none" stroke="#C07840" strokeWidth="2.5" strokeLinejoin="round"/>
+      <polygon points="32,8 6,56 58,56" fill="none" stroke="#C58B5C" strokeWidth="2.5" strokeLinejoin="round"/>
       <polyline points="18,50 26,28 32,40 38,28 46,50" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-      <line x1="36" y1="16" x2="52" y2="30" stroke="#C07840" strokeWidth="2.5" strokeLinecap="round"/>
-      <circle cx="52" cy="30" r="3" fill="#C07840"/>
+      <line x1="36" y1="16" x2="52" y2="30" stroke="#C58B5C" strokeWidth="2.5" strokeLinecap="round"/>
+      <circle cx="52" cy="30" r="3" fill="#C58B5C"/>
     </svg>
   );
 }
@@ -28,6 +28,30 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const profile = useAppStore(s => s.profile);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+
+  useEffect(() => {
+    // Sync external dark mode changes if any
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
+  const toggleTheme = () => {
+    const nextDark = !isDark;
+    setIsDark(nextDark);
+    if (nextDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      toast.success('Dark mode activated', { duration: 1500 });
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      toast.success('Light mode activated', { duration: 1500 });
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -36,12 +60,14 @@ export default function Sidebar() {
   };
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-      isActive ? 'bg-navy-800 text-white' : 'text-slate-400 hover:bg-navy-800 hover:text-white'
+    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+      isActive
+        ? 'bg-navy-800 text-white shadow-soft border-l-2 border-copper'
+        : 'text-slate-400 hover:bg-navy-800/60 hover:text-slate-100'
     }`;
 
   const navIconClass = (isActive: boolean) =>
-    `flex-shrink-0 ${isActive ? 'text-copper-400' : 'text-slate-400'}`;
+    `flex-shrink-0 transition-colors duration-150 ${isActive ? 'text-copper' : 'text-slate-400'}`;
 
   return (
     <>
@@ -52,14 +78,14 @@ export default function Sidebar() {
           <div className="flex items-center gap-2.5">
             <PeakLogo size={34} />
             <div>
-              <div className="text-sm font-bold text-white leading-none">Peak<span className="text-copper-400">Estimator</span></div>
-              <div className="text-xs text-slate-400 mt-0.5">Contractor Bidding</div>
+              <div className="text-sm font-bold text-white leading-none tracking-tight">Peak<span className="text-copper">Estimator</span></div>
+              <div className="text-[10px] text-slate-400 font-medium tracking-widest uppercase mt-1">Enterprise</div>
             </div>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto scrollbar-thin">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
           {navItems.map(({ path, label, icon: Icon }) => (
             <NavLink key={path} to={path} className={navLinkClass}>
               {({ isActive }) => (
@@ -73,8 +99,8 @@ export default function Sidebar() {
 
           {profile?.is_admin && (
             <NavLink to="/admin" className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-150 ${
-                isActive ? 'bg-navy-800 text-rose-400' : 'text-slate-400 hover:bg-navy-800 hover:text-rose-400'
+              `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold transition-all duration-150 ${
+                isActive ? 'bg-navy-800 text-rose-400 border-l-2 border-rose-500' : 'text-slate-400 hover:bg-navy-800/60 hover:text-rose-400'
               }`}>
               {({ isActive }) => (
                 <>
@@ -86,37 +112,55 @@ export default function Sidebar() {
           )}
         </nav>
 
-        {/* Profile + Logout */}
-        <div className="px-3 py-4 border-t border-navy-800 space-y-1">
+        {/* Profile + Controls */}
+        <div className="px-3 py-4 border-t border-navy-800 space-y-2 bg-navy-950/40">
           {profile && (
-            <div className="px-3 py-2.5 rounded-xl bg-navy-800 mb-2">
+            <div className="px-3 py-2.5 rounded-xl bg-navy-850/80 border border-navy-800/40">
               <div className="text-xs font-semibold text-white truncate">
                 {profile.company_name || profile.full_name || 'Your Company'}
               </div>
-              <div className="text-xs text-slate-400 truncate">{profile.email}</div>
+              <div className="text-[10px] text-slate-400 truncate mt-0.5">{profile.email}</div>
             </div>
           )}
+
+          {/* Theme switcher */}
+          <button
+            onClick={toggleTheme}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-navy-800 hover:text-white transition-all"
+          >
+            <span className="flex items-center gap-2">
+              {isDark ? <Sun style={{ width: 14, height: 14 }} className="text-amber-400" /> : <Moon style={{ width: 14, height: 14 }} className="text-slate-400" />}
+              {isDark ? 'Light Theme' : 'Dark Theme'}
+            </span>
+            <span className="text-[10px] bg-navy-800 text-slate-300 px-2 py-0.5 rounded-md border border-navy-700">Auto</span>
+          </button>
+
           <button onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-navy-800 hover:text-rose-400 transition-all">
-            <LogOut style={{ width: 18, height: 18 }} className="flex-shrink-0" />
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-navy-800 hover:text-rose-400 transition-all">
+            <LogOut style={{ width: 14, height: 14 }} className="flex-shrink-0" />
             Sign Out
           </button>
-          <div className="mt-3 mx-1 px-3 py-2 rounded-xl text-center bg-navy-900 border border-navy-800">
-            <div className="text-xs font-bold text-white">Peak<span className="text-copper-300">Estimator</span></div>
-            <div className="text-xs text-slate-300 opacity-75">Precision Bidding</div>
+          
+          <div className="pt-2 text-center text-[9px] text-slate-500 tracking-wider uppercase border-t border-navy-800/40">
+            PeakEstimator v1.2.0
           </div>
         </div>
       </aside>
 
       {/* ── Mobile top bar ──────────────────────────── */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-100 shadow-sm h-14 flex items-center justify-between px-4">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white dark:bg-navy-900 border-b border-slate-100 dark:border-navy-800 shadow-sm h-14 flex items-center justify-between px-4 transition-colors">
         <div className="flex items-center gap-2">
           <PeakLogo size={28} />
-          <span className="text-sm font-bold text-slate-900">Peak<span className="text-copper-600">Estimator</span></span>
+          <span className="text-sm font-bold text-slate-900 dark:text-white">Peak<span className="text-copper">Estimator</span></span>
         </div>
-        <button onClick={() => setMobileOpen(true)} className="p-2 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-slate-100 transition-all">
-          <Menu style={{ width: 20, height: 20 }} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={toggleTheme} className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-lg transition-all">
+            {isDark ? <Sun style={{ width: 18, height: 18 }} /> : <Moon style={{ width: 18, height: 18 }} />}
+          </button>
+          <button onClick={() => setMobileOpen(true)} className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-lg transition-all">
+            <Menu style={{ width: 20, height: 20 }} />
+          </button>
+        </div>
       </div>
 
       {/* ── Mobile drawer overlay ───────────────────── */}
@@ -129,7 +173,7 @@ export default function Sidebar() {
               <div className="flex items-center gap-2.5">
                 <PeakLogo size={32} />
                 <div>
-                  <div className="text-sm font-bold text-white">Peak<span className="text-copper-400">Estimator</span></div>
+                  <div className="text-sm font-bold text-white">Peak<span className="text-copper">Estimator</span></div>
                   <div className="text-xs text-slate-400">Contractor Bidding</div>
                 </div>
               </div>
@@ -138,7 +182,7 @@ export default function Sidebar() {
               </button>
             </div>
             {/* Nav */}
-            <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
               {navItems.map(({ path, label, icon: Icon }) => (
                 <NavLink key={path} to={path} className={navLinkClass} onClick={() => setMobileOpen(false)}>
                   {({ isActive }) => (
@@ -151,8 +195,8 @@ export default function Sidebar() {
               ))}
               {profile?.is_admin && (
                 <NavLink to="/admin" onClick={() => setMobileOpen(false)} className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                    isActive ? 'bg-navy-800 text-rose-400' : 'text-slate-400 hover:bg-navy-800 hover:text-rose-400'
+                  `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                    isActive ? 'bg-navy-800 text-rose-400' : 'text-slate-400 hover:bg-navy-800/60 hover:text-rose-400'
                   }`}>
                   {({ isActive }) => (
                     <>
@@ -164,16 +208,16 @@ export default function Sidebar() {
               )}
             </nav>
             {/* Profile */}
-            <div className="px-3 py-4 border-t border-navy-800 space-y-1">
+            <div className="px-3 py-4 border-t border-navy-800 space-y-2 bg-navy-950/40">
               {profile && (
                 <div className="px-3 py-2.5 rounded-xl bg-navy-800 mb-2">
                   <div className="text-xs font-semibold text-white truncate">{profile.company_name || profile.full_name || 'Your Company'}</div>
-                  <div className="text-xs text-slate-400 truncate">{profile.email}</div>
+                  <div className="text-[10px] text-slate-400 truncate">{profile.email}</div>
                 </div>
               )}
               <button onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:bg-navy-800 hover:text-rose-400 transition-all">
-                <LogOut style={{ width: 18, height: 18 }} className="flex-shrink-0" />
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-navy-800 hover:text-rose-400 transition-all">
+                <LogOut style={{ width: 14, height: 14 }} className="flex-shrink-0" />
                 Sign Out
               </button>
             </div>
@@ -182,15 +226,15 @@ export default function Sidebar() {
       )}
 
       {/* ── Mobile bottom nav ───────────────────────── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100 shadow-lg flex items-center justify-around px-1 h-16">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-navy-900 border-t border-slate-100 dark:border-navy-850 shadow-lg flex items-center justify-around px-1 h-16 transition-colors">
         {navItems.map(({ path, label, icon: Icon }) => (
           <NavLink key={path} to={path} className={({ isActive }) =>
             `flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all flex-1 ${
-              isActive ? 'text-navy-700' : 'text-slate-400 hover:text-slate-700'
+              isActive ? 'text-copper' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
             }`}>
             {({ isActive }) => (
               <>
-                <Icon className={isActive ? 'text-navy-600' : 'text-slate-400'} style={{ width: 20, height: 20 }} />
+                <Icon className={isActive ? 'text-copper' : 'text-slate-400'} style={{ width: 20, height: 20 }} />
                 <span className="text-[10px] font-medium leading-none">{label}</span>
               </>
             )}
@@ -199,11 +243,11 @@ export default function Sidebar() {
         {profile?.is_admin && (
           <NavLink to="/admin" className={({ isActive }) =>
             `flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all flex-1 ${
-              isActive ? 'text-rose-600' : 'text-slate-400 hover:text-rose-500'
+              isActive ? 'text-rose-500' : 'text-slate-400 hover:text-rose-400'
             }`}>
             {({ isActive }) => (
               <>
-                <ShieldAlert className={isActive ? 'text-rose-600' : 'text-slate-400'} style={{ width: 20, height: 20 }} />
+                <ShieldAlert className={isActive ? 'text-rose-500' : 'text-slate-400'} style={{ width: 20, height: 20 }} />
                 <span className="text-[10px] font-medium leading-none">Admin</span>
               </>
             )}
