@@ -26,8 +26,8 @@ export default function Dashboard() {
 
   const kpis = useMemo(() => {
     const pipeline = projects.reduce((s, p) => s + (p.total_value || 0), 0);
-    const won = projects.filter(p => p.status === 'won').length;
-    const active = projects.filter(p => ['bidding', 'sent', 'approved'].includes(p.status)).length;
+    const won = projects.filter(p => ['won', 'approved'].includes(p.status)).length;
+    const active = projects.filter(p => ['lead', 'bidding', 'sent'].includes(p.status)).length;
     const winRate = projects.length > 0 ? Math.round((won / projects.length) * 100) : 0;
     return { pipeline, won, active, winRate };
   }, [projects]);

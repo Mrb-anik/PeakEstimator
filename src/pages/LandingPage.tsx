@@ -180,7 +180,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── THE PRECISION EDGE ──────────────────────────── */}
-      <section className="py-24 bg-white relative">
+      <section className="py-24 bg-white dark:bg-navy-950 border-b border-app-border dark:border-navy-900 relative">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-copper-100 text-copper-700 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-4">
@@ -190,7 +190,7 @@ export default function LandingPage() {
               Your Work Is Elite.<br />
               <span className="text-copper">Your Proposals Should Match.</span>
             </h2>
-            <p className="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
               Homeowners can't evaluate craftsmanship until the job is done. They evaluate your proposal the second it lands. A polished, professional bid — sent in minutes — signals quality before a single nail is driven.
             </p>
           </div>
@@ -201,10 +201,10 @@ export default function LandingPage() {
               { num: '02', heading: 'Speed Signals Confidence', body: 'When your estimate lands in 5 minutes and theirs takes 3 days, clients already know who runs a tighter operation.' },
               { num: '03', heading: 'Margins Don\'t Lie', body: 'Guessing your markup on a $40K job can cost you $8K in a single miscalculation. Precision protects your profit.' },
             ].map(item => (
-              <div key={item.num} className="bg-white rounded-2xl p-8 border border-app-border shadow-card hover:shadow-soft hover:-translate-y-1 transition-all">
+              <div key={item.num} className="bg-white dark:bg-navy-900 rounded-2xl p-8 border border-app-border dark:border-navy-850 shadow-card hover:shadow-soft hover:-translate-y-1 transition-all">
                 <div className="text-4xl font-sora font-extrabold text-copper/30 mb-4">{item.num}</div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">{item.heading}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{item.body}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{item.body}</p>
               </div>
             ))}
           </div>
@@ -212,14 +212,14 @@ export default function LandingPage() {
       </section>
 
       {/* ── HOW IT WORKS ────────────────────────────────── */}
-      <section className="py-24 bg-app-bg border-y border-app-border">
+      <section className="py-24 bg-app-bg dark:bg-navy-900 border-y border-app-border dark:border-navy-850">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-navy-700 text-slate-200 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-4">
               Three Steps. One Signed Contract.
             </div>
             <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-slate-900 dark:text-white mb-4 leading-tight">Walk the Job. Send the Link. Cash the Check.</h2>
-            <p className="text-base sm:text-lg text-slate-500 max-w-xl mx-auto">The entire process from walkthrough to approved proposal — under 5 minutes.</p>
+            <p className="text-base sm:text-lg text-slate-500 dark:text-slate-400 max-w-xl mx-auto">The entire process from walkthrough to approved proposal — under 5 minutes.</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -228,11 +228,11 @@ export default function LandingPage() {
               { step: '02', emoji: '📱', title: 'Send a Link, Not a PDF', desc: 'One tap. Your client gets a clean, branded proposal on their phone. They can read it, review it, and sign it right there.' },
               { step: '03', emoji: '✅', title: 'The Signature Comes to You', desc: 'The moment they approve, your dashboard lights up. The job is locked. Drive to the next one.' },
             ].map(item => (
-              <div key={item.step} className="group bg-white rounded-2xl p-8 border border-app-border shadow-card hover:shadow-soft hover:-translate-y-1 transition-all relative">
+              <div key={item.step} className="group bg-white dark:bg-navy-950 rounded-2xl p-8 border border-app-border dark:border-navy-800 shadow-card hover:shadow-soft hover:-translate-y-1 transition-all relative">
                 <div className="text-4xl mb-4">{item.emoji}</div>
                 <div className="text-xs font-bold text-copper mb-2 tracking-widest uppercase">Step {item.step}</div>
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-3">{item.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -240,24 +240,24 @@ export default function LandingPage() {
       </section>
 
       {/* ── FEATURES ────────────────────────────────────── */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-white dark:bg-navy-950">
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-copper-100 text-copper-700 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-4">
               What's Inside
             </div>
             <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-slate-900 dark:text-white mb-4 leading-tight">Precision Built In. Profit Locked In.</h2>
-            <p className="text-base sm:text-lg text-slate-500 max-w-xl mx-auto">Not a bloated dispatching tool. A dedicated sales engine for contractors who compete at the top.</p>
+            <p className="text-base sm:text-lg text-slate-500 dark:text-slate-400 max-w-xl mx-auto">Not a bloated dispatching tool. A dedicated sales engine for contractors who compete at the top.</p>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {FEATURES.map((f, i) => (
-              <div key={i} className="group p-8 rounded-2xl bg-white border border-app-border hover:border-slate-300 hover:shadow-soft transition-all">
+              <div key={i} className="group p-8 rounded-2xl bg-white dark:bg-navy-900 border border-app-border dark:border-navy-850 hover:border-slate-300 dark:hover:border-navy-750 hover:shadow-soft transition-all">
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5 transition-all text-copper bg-copper-100/50 group-hover:bg-copper group-hover:text-white">
                   {f.icon}
                 </div>
                 <h3 className="font-bold text-slate-900 dark:text-white mb-2">{f.title}</h3>
-                <p className="text-sm text-slate-500 leading-relaxed">{f.desc}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
