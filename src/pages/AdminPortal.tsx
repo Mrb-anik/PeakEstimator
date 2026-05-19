@@ -162,7 +162,7 @@ export default function AdminPortal() {
     (w.trade && w.trade.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const modalInputClass = 'w-full px-4 py-2.5 bg-white dark:bg-navy-950 border border-slate-200 dark:border-navy-700 rounded-xl text-text-primary dark:text-text-darkPrimary placeholder-slate-400 focus:border-copper focus:ring-1 focus:ring-copper/40 transition-all text-sm';
+  const modalInputClass = 'w-full px-4 py-2.5 bg-white dark:bg-navy-950 border border-slate-200 dark:border-navy-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:border-copper focus:ring-1 focus:ring-copper/40 transition-all text-sm';
 
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto font-inter select-none animate-fade-in">
@@ -170,13 +170,13 @@ export default function AdminPortal() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-sora font-extrabold text-text-primary dark:text-text-darkPrimary flex items-center gap-2.5">
+          <h1 className="text-2xl sm:text-3xl font-sora font-extrabold text-slate-900 dark:text-white flex items-center gap-2.5">
             Admin Management
             <span className="text-[10px] font-bold bg-rose-500 text-white px-2.5 py-1 rounded-full uppercase tracking-wider">
               Superadmin
             </span>
           </h1>
-          <p className="text-text-secondary dark:text-text-darkSecondary text-sm mt-1">Control enterprise seats, approve waitlist requests, and manage access.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Control enterprise seats, approve waitlist requests, and manage access.</p>
         </div>
 
         <button
@@ -195,8 +195,8 @@ export default function AdminPortal() {
             onClick={() => setActiveTab('members')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${
               activeTab === 'members' 
-                ? 'bg-slate-100 dark:bg-navy-950 text-text-primary dark:text-white shadow-sm' 
-                : 'text-text-secondary dark:text-text-darkSecondary hover:text-text-primary dark:hover:text-white hover:bg-slate-50 dark:hover:bg-navy-950/40'
+                ? 'bg-slate-100 dark:bg-navy-950 text-slate-900 dark:text-white shadow-sm' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-navy-950/40'
             }`}
           >
             <Users className="w-4 h-4" />
@@ -207,8 +207,8 @@ export default function AdminPortal() {
             onClick={() => setActiveTab('waitlist')}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${
               activeTab === 'waitlist' 
-                ? 'bg-slate-100 dark:bg-navy-950 text-text-primary dark:text-white shadow-sm' 
-                : 'text-text-secondary dark:text-text-darkSecondary hover:text-text-primary dark:hover:text-white hover:bg-slate-50 dark:hover:bg-navy-950/40'
+                ? 'bg-slate-100 dark:bg-navy-950 text-slate-900 dark:text-white shadow-sm' 
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-navy-950/40'
             }`}
           >
             <Mail className="w-4 h-4" />
@@ -223,7 +223,7 @@ export default function AdminPortal() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search email, name, company..."
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-850 rounded-xl text-sm focus:border-copper focus:ring-1 focus:ring-copper/40 transition-all text-text-primary dark:text-text-darkPrimary placeholder-slate-400 dark:placeholder-slate-500"
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-850 rounded-xl text-sm focus:border-copper focus:ring-1 focus:ring-copper/40 transition-all text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
           />
         </div>
       </div>
@@ -238,7 +238,7 @@ export default function AdminPortal() {
           <div className="overflow-x-auto scrollbar-thin">
             <table className="w-full text-left border-collapse min-w-[850px]">
               <thead>
-                <tr className="bg-slate-50 dark:bg-navy-950 border-b border-app-border dark:border-navy-800 text-[10px] font-bold text-text-secondary dark:text-text-darkSecondary uppercase tracking-wider">
+                <tr className="bg-slate-50 dark:bg-navy-950 border-b border-app-border dark:border-navy-800 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   <th className="py-4 px-6">Member / Company</th>
                   <th className="py-4 px-6">Email Address</th>
                   <th className="py-4 px-6">Security Access Role</th>
@@ -246,10 +246,10 @@ export default function AdminPortal() {
                   <th className="py-4 px-6 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-app-border dark:divide-navy-800 text-sm text-text-primary dark:text-text-darkPrimary">
+              <tbody className="divide-y divide-app-border dark:divide-navy-800 text-sm text-slate-900 dark:text-white">
                 {filteredMembers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-16 text-center text-text-secondary dark:text-text-darkSecondary font-semibold">
+                    <td colSpan={5} className="py-16 text-center text-slate-500 dark:text-slate-400 font-semibold">
                       No members found matching your search.
                     </td>
                   </tr>
@@ -257,13 +257,13 @@ export default function AdminPortal() {
                   filteredMembers.map(m => (
                     <tr key={m.id} className="hover:bg-slate-50/50 dark:hover:bg-navy-950/40 transition-colors">
                       <td className="py-4 px-6">
-                        <div className="font-bold text-text-primary dark:text-text-darkPrimary">{m.full_name || '—'}</div>
-                        <div className="text-xs text-text-secondary dark:text-text-darkSecondary flex items-center gap-1.5 mt-0.5 font-medium">
+                        <div className="font-bold text-slate-900 dark:text-white">{m.full_name || '—'}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5 font-medium">
                           <Building2 className="w-3.5 h-3.5" /> {m.company_name || 'No Company Listed'}
                         </div>
                       </td>
                       
-                      <td className="py-4 px-6 font-semibold text-text-primary dark:text-text-darkPrimary">{m.email}</td>
+                      <td className="py-4 px-6 font-semibold text-slate-900 dark:text-white">{m.email}</td>
                       
                       <td className="py-4 px-6">
                         {m.is_admin ? (
@@ -271,13 +271,13 @@ export default function AdminPortal() {
                             Superadmin
                           </span>
                         ) : (
-                          <span className="bg-slate-100 dark:bg-navy-950 text-text-secondary dark:text-text-darkSecondary text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-200 dark:border-navy-850 uppercase tracking-wide">
+                          <span className="bg-slate-100 dark:bg-navy-950 text-slate-500 dark:text-slate-400 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-slate-200 dark:border-navy-850 uppercase tracking-wide">
                             Contractor Seat
                           </span>
                         )}
                       </td>
                       
-                      <td className="py-4 px-6 text-text-secondary dark:text-text-darkSecondary text-xs font-semibold">
+                      <td className="py-4 px-6 text-slate-500 dark:text-slate-400 text-xs font-semibold">
                         {new Date(m.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       
@@ -285,7 +285,7 @@ export default function AdminPortal() {
                         {!m.is_admin && (
                           <button
                             onClick={() => handleRevokeAccess(m.id, m.email)}
-                            className="p-1.5 text-text-secondary dark:text-text-darkSecondary hover:text-status-danger dark:hover:text-status-danger hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-all"
+                            className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-status-danger dark:hover:text-status-danger hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-all"
                             title="Revoke Access & Delete Account"
                           >
                             <Trash2 className="w-4.5 h-4.5" />
@@ -304,7 +304,7 @@ export default function AdminPortal() {
           <div className="overflow-x-auto scrollbar-thin">
             <table className="w-full text-left border-collapse min-w-[850px]">
               <thead>
-                <tr className="bg-slate-50 dark:bg-navy-950 border-b border-app-border dark:border-navy-800 text-[10px] font-bold text-text-secondary dark:text-text-darkSecondary uppercase tracking-wider">
+                <tr className="bg-slate-50 dark:bg-navy-950 border-b border-app-border dark:border-navy-800 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   <th className="py-4 px-6">Applicant / Company</th>
                   <th className="py-4 px-6">Email Address</th>
                   <th className="py-4 px-6">Trade Discipline</th>
@@ -312,10 +312,10 @@ export default function AdminPortal() {
                   <th className="py-4 px-6 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-app-border dark:divide-navy-800 text-sm text-text-primary dark:text-text-darkPrimary">
+              <tbody className="divide-y divide-app-border dark:divide-navy-800 text-sm text-slate-900 dark:text-white">
                 {filteredWaitlist.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-16 text-center text-text-secondary dark:text-text-darkSecondary font-semibold">
+                    <td colSpan={5} className="py-16 text-center text-slate-500 dark:text-slate-400 font-semibold">
                       No waitlist entries found.
                     </td>
                   </tr>
@@ -323,13 +323,13 @@ export default function AdminPortal() {
                   filteredWaitlist.map(w => (
                     <tr key={w.id} className="hover:bg-slate-50/50 dark:hover:bg-navy-950/40 transition-colors">
                       <td className="py-4 px-6">
-                        <div className="font-bold text-text-primary dark:text-text-darkPrimary">{w.name || '—'}</div>
-                        <div className="text-xs text-text-secondary dark:text-text-darkSecondary flex items-center gap-1.5 mt-0.5 font-medium">
+                        <div className="font-bold text-slate-900 dark:text-white">{w.name || '—'}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mt-0.5 font-medium">
                           <Building2 className="w-3.5 h-3.5" /> {w.company || 'No Company Listed'}
                         </div>
                       </td>
                       
-                      <td className="py-4 px-6 font-semibold text-text-primary dark:text-text-darkPrimary">{w.email}</td>
+                      <td className="py-4 px-6 font-semibold text-slate-900 dark:text-white">{w.email}</td>
                       
                       <td className="py-4 px-6">
                         <span className="bg-copper/10 dark:bg-copper/20 text-copper dark:text-copper-300 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-copper/20 dark:border-copper-900/30 uppercase tracking-wide capitalize">
@@ -337,7 +337,7 @@ export default function AdminPortal() {
                         </span>
                       </td>
                       
-                      <td className="py-4 px-6 text-text-secondary dark:text-text-darkSecondary text-xs font-semibold">
+                      <td className="py-4 px-6 text-slate-500 dark:text-slate-400 text-xs font-semibold">
                         {new Date(w.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       
@@ -350,7 +350,7 @@ export default function AdminPortal() {
                         </button>
                         <button
                           onClick={() => handleRemoveWaitlist(w.id)}
-                          className="p-1.5 text-text-secondary dark:text-text-darkSecondary hover:text-status-danger dark:hover:text-status-danger hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-all"
+                          className="p-1.5 text-slate-500 dark:text-slate-400 hover:text-status-danger dark:hover:text-status-danger hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-all"
                           title="Remove from waitlist"
                         >
                           <Trash2 className="w-4.5 h-4.5" />
@@ -370,18 +370,18 @@ export default function AdminPortal() {
         <div className="fixed inset-0 bg-slate-950/40 dark:bg-slate-950/65 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-navy border border-slate-200 dark:border-navy-800 rounded-2xl p-8 max-w-md w-full shadow-premium animate-scale-in text-left">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-slate-100 dark:bg-navy-950 rounded-2xl flex items-center justify-center text-text-primary dark:text-white flex-shrink-0">
+              <div className="w-12 h-12 bg-slate-100 dark:bg-navy-950 rounded-2xl flex items-center justify-center text-slate-900 dark:text-white flex-shrink-0">
                 <UserCheck className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-xl font-sora font-extrabold text-text-primary dark:text-text-darkPrimary">Send Enterprise Invitation</h3>
-                <p className="text-text-secondary dark:text-text-darkSecondary text-xs mt-0.5 font-medium">Sends a secure magic setup link directly to their inbox.</p>
+                <h3 className="text-xl font-sora font-extrabold text-slate-900 dark:text-white">Send Enterprise Invitation</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-xs mt-0.5 font-medium">Sends a secure magic setup link directly to their inbox.</p>
               </div>
             </div>
 
             <form onSubmit={handleInvite} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-darkSecondary mb-1.5">Recipient Email <span className="text-status-danger">*</span></label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Recipient Email <span className="text-status-danger">*</span></label>
                 <input
                   type="email"
                   required
@@ -393,7 +393,7 @@ export default function AdminPortal() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-darkSecondary mb-1.5">Full Name</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Full Name</label>
                 <input
                   type="text"
                   value={inviteName}
@@ -404,7 +404,7 @@ export default function AdminPortal() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-darkSecondary mb-1.5">Company Name</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Company Name</label>
                 <input
                   type="text"
                   value={inviteCompany}
@@ -418,7 +418,7 @@ export default function AdminPortal() {
                 <button
                   type="button"
                   onClick={() => setShowInviteModal(false)}
-                  className="px-5 py-2.5 text-text-secondary dark:text-text-darkSecondary hover:text-text-primary dark:hover:text-white font-bold text-sm transition-colors cursor-pointer"
+                  className="px-5 py-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-bold text-sm transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>

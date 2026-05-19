@@ -68,7 +68,7 @@ export default function LandingPage() {
   const shareUrl  = encodeURIComponent('https://lmtrx.us');
 
   return (
-    <div className="min-h-screen bg-app-bg text-text-primary font-inter overflow-x-hidden selection:bg-copper/20 selection:text-copper-700">
+    <div className="min-h-screen bg-app-bg text-slate-900 font-inter overflow-x-hidden selection:bg-copper/20 selection:text-copper-700">
       
       {/* ── NAV ──────────────────────────────────────────── */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -79,7 +79,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <PeakLogo size={34} />
-            <span className={`font-sora font-bold text-lg hidden sm:block transition-colors ${scrolled ? 'text-navy' : 'text-white'}`}>
+            <span className={`font-sora font-bold text-lg hidden sm:block transition-colors ${scrolled ? 'text-[#0F172A] dark:text-white' : 'text-white'}`}>
               Peak<span className="text-copper">Estimator</span>
             </span>
           </div>
@@ -87,7 +87,9 @@ export default function LandingPage() {
             <Link 
               to="/login" 
               className={`text-sm font-medium transition-colors px-3 py-2 ${
-                scrolled ? 'text-text-secondary hover:text-text-primary' : 'text-slate-300 hover:text-white'
+                scrolled 
+                  ? 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white' 
+                  : 'text-slate-300 hover:text-white'
               }`}
             >
               Member Sign In
@@ -184,11 +186,11 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 bg-copper-100 text-copper-700 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-4">
               The Precision Edge
             </div>
-            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-navy mb-4 leading-tight">
+            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-slate-900 dark:text-white mb-4 leading-tight">
               Your Work Is Elite.<br />
               <span className="text-copper">Your Proposals Should Match.</span>
             </h2>
-            <p className="text-base sm:text-lg text-text-secondary max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
               Homeowners can't evaluate craftsmanship until the job is done. They evaluate your proposal the second it lands. A polished, professional bid — sent in minutes — signals quality before a single nail is driven.
             </p>
           </div>
@@ -201,8 +203,8 @@ export default function LandingPage() {
             ].map(item => (
               <div key={item.num} className="bg-white rounded-2xl p-8 border border-app-border shadow-card hover:shadow-soft hover:-translate-y-1 transition-all">
                 <div className="text-4xl font-sora font-extrabold text-copper/30 mb-4">{item.num}</div>
-                <h3 className="text-base font-bold text-navy mb-2">{item.heading}</h3>
-                <p className="text-sm text-text-secondary leading-relaxed">{item.body}</p>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white mb-2">{item.heading}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{item.body}</p>
               </div>
             ))}
           </div>
@@ -216,8 +218,8 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 bg-navy-700 text-slate-200 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-4">
               Three Steps. One Signed Contract.
             </div>
-            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-navy mb-4 leading-tight">Walk the Job. Send the Link. Cash the Check.</h2>
-            <p className="text-base sm:text-lg text-text-secondary max-w-xl mx-auto">The entire process from walkthrough to approved proposal — under 5 minutes.</p>
+            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-slate-900 dark:text-white mb-4 leading-tight">Walk the Job. Send the Link. Cash the Check.</h2>
+            <p className="text-base sm:text-lg text-slate-500 max-w-xl mx-auto">The entire process from walkthrough to approved proposal — under 5 minutes.</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -229,8 +231,8 @@ export default function LandingPage() {
               <div key={item.step} className="group bg-white rounded-2xl p-8 border border-app-border shadow-card hover:shadow-soft hover:-translate-y-1 transition-all relative">
                 <div className="text-4xl mb-4">{item.emoji}</div>
                 <div className="text-xs font-bold text-copper mb-2 tracking-widest uppercase">Step {item.step}</div>
-                <h3 className="text-lg font-bold text-navy mb-3">{item.title}</h3>
-                <p className="text-sm text-text-secondary leading-relaxed">{item.desc}</p>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-3">{item.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
@@ -244,8 +246,8 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 bg-copper-100 text-copper-700 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full mb-4">
               What's Inside
             </div>
-            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-navy mb-4 leading-tight">Precision Built In. Profit Locked In.</h2>
-            <p className="text-base sm:text-lg text-text-secondary max-w-xl mx-auto">Not a bloated dispatching tool. A dedicated sales engine for contractors who compete at the top.</p>
+            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-slate-900 dark:text-white mb-4 leading-tight">Precision Built In. Profit Locked In.</h2>
+            <p className="text-base sm:text-lg text-slate-500 max-w-xl mx-auto">Not a bloated dispatching tool. A dedicated sales engine for contractors who compete at the top.</p>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -254,8 +256,8 @@ export default function LandingPage() {
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-5 transition-all text-copper bg-copper-100/50 group-hover:bg-copper group-hover:text-white">
                   {f.icon}
                 </div>
-                <h3 className="font-bold text-navy mb-2">{f.title}</h3>
-                <p className="text-sm text-text-secondary leading-relaxed">{f.desc}</p>
+                <h3 className="font-bold text-slate-900 dark:text-white mb-2">{f.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -309,7 +311,7 @@ export default function LandingPage() {
                   value={name} 
                   onChange={e => setName(e.target.value)} 
                   placeholder="Mike Johnson"
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 text-white placeholder-copper-200/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-transparent transition-all" 
+                  className="w-full px-4 py-3 bg-navy-950/45 border border-white/20 text-white placeholder-copper-200/60 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-white/30 focus:border-white/40 transition-all font-inter" 
                 />
               </div>
               
@@ -321,7 +323,7 @@ export default function LandingPage() {
                   value={email} 
                   onChange={e => setEmail(e.target.value)} 
                   placeholder="mike@yourcompany.com"
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 text-white placeholder-copper-200/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-transparent transition-all" 
+                  className="w-full px-4 py-3 bg-navy-950/45 border border-white/20 text-white placeholder-copper-200/60 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-white/30 focus:border-white/40 transition-all font-inter" 
                 />
               </div>
               
@@ -331,7 +333,7 @@ export default function LandingPage() {
                   <select 
                     value={trade} 
                     onChange={e => setTrade(e.target.value)}
-                    className="w-full px-4 py-3 bg-white/10 border border-white/20 text-white rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-transparent transition-all appearance-none cursor-pointer"
+                    className="w-full px-4 py-3 bg-navy-950/45 border border-white/20 text-white rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-white/30 focus:border-white/40 transition-all appearance-none cursor-pointer font-inter"
                   >
                     <option value="" className="text-slate-800">Select your trade…</option>
                     <option value="electrical" className="text-slate-800">⚡ Electrical</option>

@@ -62,8 +62,8 @@ export default function Sidebar() {
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
       isActive
-        ? 'bg-navy-800 text-white shadow-soft border-l-2 border-copper'
-        : 'text-slate-400 hover:bg-navy-800/60 hover:text-slate-100'
+        ? 'bg-navy-700 text-white shadow-soft border-l-2 border-copper'
+        : 'text-slate-400 hover:bg-navy-700/60 hover:text-slate-100'
     }`;
 
   const navIconClass = (isActive: boolean) =>
@@ -72,9 +72,9 @@ export default function Sidebar() {
   return (
     <>
       {/* ── Desktop sidebar (lg+) ───────────────────── */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-60 bg-navy-900 border-r border-navy-800 flex-col z-50 shadow-soft">
+      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-60 bg-navy border-r border-navy-700 flex-col z-50 shadow-soft">
         {/* Logo */}
-        <div className="px-5 py-5 border-b border-navy-800">
+        <div className="px-5 py-5 border-b border-navy-700">
           <div className="flex items-center gap-2.5">
             <PeakLogo size={34} />
             <div>
@@ -100,7 +100,7 @@ export default function Sidebar() {
           {profile?.is_admin && (
             <NavLink to="/admin" className={({ isActive }) =>
               `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold transition-all duration-150 ${
-                isActive ? 'bg-navy-800 text-rose-400 border-l-2 border-rose-500' : 'text-slate-400 hover:bg-navy-800/60 hover:text-rose-400'
+                isActive ? 'bg-navy-700 text-rose-400 border-l-2 border-rose-500' : 'text-slate-400 hover:bg-navy-700/60 hover:text-rose-400'
               }`}>
               {({ isActive }) => (
                 <>
@@ -113,9 +113,9 @@ export default function Sidebar() {
         </nav>
 
         {/* Profile + Controls */}
-        <div className="px-3 py-4 border-t border-navy-800 space-y-2 bg-navy-950/40">
+        <div className="px-3 py-4 border-t border-navy-700 space-y-2 bg-navy-950/40">
           {profile && (
-            <div className="px-3 py-2.5 rounded-xl bg-navy-850/80 border border-navy-800/40">
+            <div className="px-3 py-2.5 rounded-xl bg-navy-700/80 border border-navy-700/45">
               <div className="text-xs font-semibold text-white truncate">
                 {profile.company_name || profile.full_name || 'Your Company'}
               </div>
@@ -126,22 +126,22 @@ export default function Sidebar() {
           {/* Theme switcher */}
           <button
             onClick={toggleTheme}
-            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-navy-800 hover:text-white transition-all"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-navy-700 hover:text-white transition-all"
           >
             <span className="flex items-center gap-2">
               {isDark ? <Sun style={{ width: 14, height: 14 }} className="text-amber-400" /> : <Moon style={{ width: 14, height: 14 }} className="text-slate-400" />}
               {isDark ? 'Light Theme' : 'Dark Theme'}
             </span>
-            <span className="text-[10px] bg-navy-800 text-slate-300 px-2 py-0.5 rounded-md border border-navy-700">Auto</span>
+            <span className="text-[10px] bg-navy-700 text-slate-300 px-2 py-0.5 rounded-md border border-navy-700">Auto</span>
           </button>
 
           <button onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-navy-800 hover:text-rose-400 transition-all">
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-navy-700 hover:text-rose-400 transition-all">
             <LogOut style={{ width: 14, height: 14 }} className="flex-shrink-0" />
             Sign Out
           </button>
           
-          <div className="pt-2 text-center text-[9px] text-slate-500 tracking-wider uppercase border-t border-navy-800/40">
+          <div className="pt-2 text-center text-[9px] text-slate-500 tracking-wider uppercase border-t border-navy-700/40">
             PeakEstimator v1.2.0
           </div>
         </div>
@@ -166,10 +166,10 @@ export default function Sidebar() {
       {/* ── Mobile drawer overlay ───────────────────── */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-[100] flex">
-          <div className="absolute inset-0 bg-navy-900/50 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-          <div className="relative w-72 bg-navy-900 h-full flex flex-col shadow-2xl animate-slide-in-right">
+          <div className="absolute inset-0 bg-navy/50 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          <div className="relative w-72 bg-navy h-full flex flex-col shadow-2xl animate-slide-in-right">
             {/* Header */}
-            <div className="px-5 py-4 border-b border-navy-800 flex items-center justify-between">
+            <div className="px-5 py-4 border-b border-navy-700 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <PeakLogo size={32} />
                 <div>
@@ -177,7 +177,7 @@ export default function Sidebar() {
                   <div className="text-xs text-slate-400">Contractor Bidding</div>
                 </div>
               </div>
-              <button onClick={() => setMobileOpen(false)} className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-navy-800 transition-all">
+              <button onClick={() => setMobileOpen(false)} className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-navy-700 transition-all">
                 <X style={{ width: 18, height: 18 }} />
               </button>
             </div>
@@ -196,7 +196,7 @@ export default function Sidebar() {
               {profile?.is_admin && (
                 <NavLink to="/admin" onClick={() => setMobileOpen(false)} className={({ isActive }) =>
                   `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                    isActive ? 'bg-navy-800 text-rose-400' : 'text-slate-400 hover:bg-navy-800/60 hover:text-rose-400'
+                    isActive ? 'bg-navy-700 text-rose-400' : 'text-slate-400 hover:bg-navy-700/60 hover:text-rose-400'
                   }`}>
                   {({ isActive }) => (
                     <>
@@ -208,15 +208,15 @@ export default function Sidebar() {
               )}
             </nav>
             {/* Profile */}
-            <div className="px-3 py-4 border-t border-navy-800 space-y-2 bg-navy-950/40">
+            <div className="px-3 py-4 border-t border-navy-700 space-y-2 bg-navy-950/40">
               {profile && (
-                <div className="px-3 py-2.5 rounded-xl bg-navy-800 mb-2">
+                <div className="px-3 py-2.5 rounded-xl bg-navy-700 mb-2">
                   <div className="text-xs font-semibold text-white truncate">{profile.company_name || profile.full_name || 'Your Company'}</div>
                   <div className="text-[10px] text-slate-400 truncate">{profile.email}</div>
                 </div>
               )}
               <button onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-navy-800 hover:text-rose-400 transition-all">
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-navy-700 hover:text-rose-400 transition-all">
                 <LogOut style={{ width: 14, height: 14 }} className="flex-shrink-0" />
                 Sign Out
               </button>

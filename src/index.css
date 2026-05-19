@@ -3,6 +3,20 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --chart-grid: #E2E8F0;
+    --tooltip-bg: #FFFFFF;
+    --tooltip-border: #E2E8F0;
+    --tooltip-text: #111827;
+  }
+
+  html.dark {
+    --chart-grid: #1E293B;
+    --tooltip-bg: #0F172A;
+    --tooltip-border: #1E293B;
+    --tooltip-text: #F8FAFC;
+  }
+
   * {
     box-sizing: border-box;
     margin: 0;
@@ -64,6 +78,41 @@
     color: #0F172A;
   }
 
+  .text-text-primary {
+    color: #111827;
+  }
+  html.dark .text-text-primary {
+    color: #F8FAFC;
+  }
+
+  .text-text-secondary {
+    color: #64748B;
+  }
+  html.dark .text-text-secondary {
+    color: #94A3B8;
+  }
+
+  .text-text-darkPrimary {
+    color: #F8FAFC;
+  }
+  html.dark .text-text-darkPrimary {
+    color: #F8FAFC;
+  }
+
+  .text-text-darkSecondary {
+    color: #94A3B8;
+  }
+  html.dark .text-text-darkSecondary {
+    color: #94A3B8;
+  }
+
+  html.dark .dark\:text-text-darkPrimary {
+    color: #F8FAFC !important;
+  }
+  html.dark .dark\:text-text-darkSecondary {
+    color: #94A3B8 !important;
+  }
+
   /* ── Glass effect (Subtle) ───────────────────────────── */
   .glass {
     background: rgba(255,255,255,0.7);
@@ -98,12 +147,132 @@
 .animate-slide-up        { animation: slideUp 0.35s ease-out forwards; }
 .animate-pulse-ring      { animation: pulse-ring 2s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite; }
 
-/* ── Input focus ──────────────────────────────── */
+/* ── Input focus & legibility overrides ──────────────── */
 input:focus, textarea:focus, select:focus { outline: none; }
+
+/* Default input styling (flexible base colors, overridden by Tailwind classes) */
+input, textarea, select {
+  color: #111827;
+}
+
+html.dark input, 
+html.dark textarea, 
+html.dark select {
+  color: #F8FAFC;
+}
+
+/* High-specificity background matches (forces correct contrast under both modes) */
+input.bg-white, input.bg-slate-50, input.bg-slate-100,
+.bg-white input, .bg-slate-50 input, .bg-slate-100 input,
+.bg-white textarea, .bg-slate-50 textarea, .bg-slate-100 textarea,
+.bg-white select, .bg-slate-50 select, .bg-slate-100 select {
+  color: #111827 !important;
+}
+
+input.bg-navy, input.bg-navy-700, input.bg-navy-800, input.bg-navy-900, input.bg-navy-950,
+.bg-navy input, .bg-navy-700 input, .bg-navy-800 input, .bg-navy-900 input, .bg-navy-950 input,
+.bg-navy textarea, .bg-navy-700 textarea, .bg-navy-800 textarea, .bg-navy-900 textarea, .bg-navy-950 textarea,
+.bg-navy select, .bg-navy-700 select, .bg-navy-800 select, .bg-navy-900 select, .bg-navy-950 select {
+  color: #FFFFFF !important;
+}
+
+/* Chrome/Safari autofill fixes to prevent invisible text */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #111827 !important;
+  caret-color: #111827 !important;
+  -webkit-box-shadow: 0 0 0px 1000px #FFFFFF inset !important; /* Force clean white background */
+  transition: background-color 500000s ease-in-out 0s;
+}
+
+/* Autofill rules for dark contexts (dark theme, login/signup forms, waitlist) */
+html.dark input:-webkit-autofill,
+html.dark input:-webkit-autofill:hover, 
+html.dark input:-webkit-autofill:focus, 
+html.dark input:-webkit-autofill:active,
+.bg-navy input:-webkit-autofill,
+.bg-navy input:-webkit-autofill:hover,
+.bg-navy input:-webkit-autofill:focus,
+.bg-navy input:-webkit-autofill:active,
+.bg-navy-700 input:-webkit-autofill,
+.bg-navy-700 input:-webkit-autofill:hover,
+.bg-navy-700 input:-webkit-autofill:focus,
+.bg-navy-700 input:-webkit-autofill:active,
+.bg-navy-950 input:-webkit-autofill,
+.bg-navy-950 input:-webkit-autofill:hover,
+.bg-navy-950 input:-webkit-autofill:focus,
+.bg-navy-950 input:-webkit-autofill:active,
+input.bg-navy-950:-webkit-autofill,
+input.bg-navy-950:-webkit-autofill:hover,
+input.bg-navy-950:-webkit-autofill:focus,
+input.bg-navy-950:-webkit-autofill:active {
+  -webkit-text-fill-color: #FFFFFF !important;
+  caret-color: #FFFFFF !important;
+  -webkit-box-shadow: 0 0 0px 1000px #020617 inset !important; /* Force sleek dark background */
+}
 
 /* ── Table row hover ─────────────────────────── */
 .table-row-hover:hover { background-color: #F8FAFC; }
 html.dark .table-row-hover:hover { background-color: #0F172A; }
+
+/* ── Explicit Dark Mode Overrides to bypass compiler issues ── */
+html.dark {
+  /* Layout backgrounds */
+  background-color: #020617 !important;
+}
+
+html.dark body {
+  background-color: #020617 !important;
+  color: #F8FAFC !important;
+}
+
+html.dark .bg-slate-50 {
+  background-color: #020617 !important;
+}
+
+html.dark .bg-white {
+  background-color: #0F172A !important;
+}
+
+html.dark .bg-slate-100 {
+  background-color: #1E293B !important;
+}
+
+html.dark .bg-slate-200 {
+  background-color: #334155 !important;
+}
+
+/* Borders */
+html.dark .border-slate-100 {
+  border-color: #1E293B !important;
+}
+
+html.dark .border-slate-150 {
+  border-color: #1E293B !important;
+}
+
+html.dark .border-slate-200 {
+  border-color: #334155 !important;
+}
+
+html.dark .border-app-border {
+  border-color: #1E293B !important;
+}
+
+/* Scrolled nav header on landing page */
+html.dark nav.bg-white\/95,
+html.dark nav.bg-white\/90 {
+  background-color: rgba(2, 6, 23, 0.95) !important;
+  border-color: #1E293B !important;
+}
+
+/* Sidebar background safety in dark mode */
+html.dark aside,
+html.dark .bg-navy {
+  background-color: #0F172A !important;
+}
 
 /* ── Status badge styles ─────────────────────── */
 .status-lead     { background: #F1F5F9; color: #64748B; border: 1px solid #E2E8F0; }
