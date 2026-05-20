@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Lock, CheckCircle, Mountain, Zap, FileText, Phone, Shield, TrendingUp, Clock, Twitter, Linkedin } from 'lucide-react';
+import { ArrowRight, Lock, CheckCircle, Mountain, Zap, FileText, Phone, Shield, TrendingUp, Clock } from 'lucide-react';
 import { supabase } from '../api/supabase';
 import { toast } from 'sonner';
 
@@ -386,24 +386,6 @@ export default function LandingPage() {
           <div className="text-slate-500 text-xs text-center">© {new Date().getFullYear()} PeakEstimator. All rights reserved.</div>
           <div className="flex items-center gap-4">
             <Link to="/login" className="text-xs sm:text-sm text-slate-400 hover:text-white transition-colors">Member Sign In</Link>
-            <a 
-              href={`https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-slate-400 hover:text-copper transition-colors p-1" 
-              title="Share on X/Twitter"
-            >
-              <Twitter className="w-4 h-4" />
-            </a>
-            <a 
-              href={`https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-slate-400 hover:text-copper transition-colors p-1" 
-              title="Share on LinkedIn"
-            >
-              <Linkedin className="w-4 h-4" />
-            </a>
           </div>
         </div>
       </footer>

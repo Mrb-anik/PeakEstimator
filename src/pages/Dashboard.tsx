@@ -1,13 +1,20 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-import { TrendingUp, Briefcase, CheckCircle, Target, Plus, ArrowRight } from 'lucide-react';
+import {
+  TrendingUp, Briefcase, CheckCircle, Target, Plus, ArrowRight,
+  Activity, Heart, Info, Sparkles, Check, X, ChevronRight, HelpCircle,
+  Zap, Award, ShieldAlert, Star
+} from 'lucide-react';
 import { useProjects } from '../hooks/useProjects';
+import { useAppStore } from '../store/useAppStore';
+import { useEventBus } from '../hooks/useEventBus';
+import { supabase } from '../api/supabase';
 import { formatCurrency } from '../lib/calculations';
-import type { StatusType } from '../types';
+import type { StatusType, ActivityEvent } from '../types';
 
 const STATUS_COLORS: Record<StatusType, string> = {
   lead: '#94A3B8',
@@ -22,8 +29,97 @@ const TRADE_COLORS = ['#C58B5C', '#1E293B', '#10B981', '#F59E0B', '#EF4444', '#8
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { projects, loading } = useProjects();
+  const { projects, loading: projectsLoading } = useProjects();
+  const profile = useAppStore(s => s.profile);
+  const updateProfile = useAppStore(s => s.updateProfile);
+  const { triggerEvent } = useEventBus();
 
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(true);
+  const [tourStep, setTourStep] = useState<number | null>(null);
+
+  // 1. Fetch Timeline Events
+  useEffect(() => {
+    fetchEvents();
+
+    const channel = supabase
+      .channel('public:activity_events')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_events' }, () => {
+        fetchEvents();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchEvents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('activity_events')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+      if (!error && data) {
+        setEvents(data as ActivityEvent[]);
+      }
+    } catch (e) {
+      console.error('Error fetching activity events:', e);
+    } finally {
+      setTimelineLoading(false);
+    }
+  };
+
+  // 2. Check if we need to start the Guided Tour
+  useEffect(() => {
+    if (profile && !profile.has_dismissed_helpers?.includes('dashboard_tour')) {
+      // Trigger short delay for smooth entrance
+      const timer = setTimeout(() => {
+        setTourStep(1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [profile]);
+
+  // Log a dashboard view event for timeline demonstration if timeline is empty
+  useEffect(() => {
+    if (!projectsLoading && events.length === 0 && profile) {
+      triggerEvent({
+        entityType: 'onboarding',
+        actionType: 'started',
+        title: 'Contractor Operations Initialized',
+        description: 'First login complete. Setup checklists and concierge pipeline are live.',
+        metadata: { source: 'System Auto-Gen' }
+      }).then(() => fetchEvents());
+    }
+  }, [projectsLoading, events.length, profile]);
+
+  const dismissHelper = async (helperId: string) => {
+    if (!profile) return;
+    const current = profile.has_dismissed_helpers || [];
+    if (!current.includes(helperId)) {
+      const updated = [...current, helperId];
+      await updateProfile({ has_dismissed_helpers: updated });
+    }
+  };
+
+  const finishTour = async () => {
+    setTourStep(null);
+    await dismissHelper('dashboard_tour');
+    // Trigger success event for completing tour
+    triggerEvent({
+      entityType: 'onboarding',
+      actionType: 'completed',
+      title: 'Guided Operations Tour Completed',
+      description: 'You are now ready to operate PeakEstimator at full velocity.',
+      sendNotification: true,
+      notificationType: 'success'
+    });
+  };
+
+  // KPI calculations
   const kpis = useMemo(() => {
     const pipeline = projects.reduce((s, p) => s + (p.total_value || 0), 0);
     const won = projects.filter(p => ['won', 'approved'].includes(p.status)).length;
@@ -32,6 +128,7 @@ export default function Dashboard() {
     return { pipeline, won, active, winRate };
   }, [projects]);
 
+  // Status and trade mix charts
   const statusData = useMemo(() => {
     const counts: Record<string, number> = {};
     projects.forEach(p => { counts[p.status] = (counts[p.status] || 0) + 1; });
@@ -48,9 +145,25 @@ export default function Dashboard() {
     return Object.entries(counts).map(([trade, value]) => ({ trade, value }));
   }, [projects]);
 
+  // 3. Calculate Account Success Health Score dynamically
+  const healthMetrics = useMemo(() => {
+    if (!profile) return { score: 0, steps: [] };
+
+    const steps = [
+      { id: 'profile', name: 'Complete profile configuration', completed: !!profile.company_name, pts: 30 },
+      { id: 'bids', name: 'Create active estimation bids', completed: projects.length > 0, pts: 25 },
+      { id: 'markup', name: 'Configure default markup settings', completed: profile.default_labor_markup > 0, pts: 15 },
+      { id: 'success_hub', name: 'Connect Concierge Integration request', completed: !!profile.concierge_requested, pts: 15 },
+      { id: 'logo', name: 'Upload professional company branding logo', completed: !!profile.company_logo, pts: 15 },
+    ];
+
+    const score = steps.reduce((sum, s) => sum + (s.completed ? s.pts : 0), 0);
+    return { score, steps };
+  }, [profile, projects]);
+
   const recentProjects = projects.slice(0, 5);
 
-  if (loading) {
+  if (projectsLoading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-screen">
         <div className="w-8 h-8 border-4 border-copper border-t-transparent rounded-full animate-spin" />
@@ -58,207 +171,437 @@ export default function Dashboard() {
     );
   }
 
+  const isHelperDismissed = (id: string) => {
+    return profile?.has_dismissed_helpers?.includes(id);
+  };
+
   return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto animate-fade-in font-inter select-none">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto animate-fade-in font-inter select-none relative">
+      {/* ── Spotlight / Guided Tour Render ───────────────────── */}
+      {tourStep !== null && (
+        <div className="fixed inset-0 bg-navy/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-800 shadow-premium p-6 rounded-2xl max-w-md w-full animate-scale-in">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="w-5 h-5 text-copper animate-bounce" />
+              <span className="text-xs font-bold text-copper uppercase tracking-wider">Spotlight Tour ({tourStep}/3)</span>
+            </div>
+
+            {tourStep === 1 && (
+              <div>
+                <h3 className="text-lg font-bold font-sora text-slate-900 dark:text-white mb-2">The Executive Command Center</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed mb-6">
+                  Welcome to PeakEstimator, optimized for contractor operations. Track your entire project lifecycle, configure markups, and request bespoke custom integrations from your single dashboard.
+                </p>
+                <div className="flex items-center justify-between">
+                  <button onClick={finishTour} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-medium">Skip Tour</button>
+                  <button onClick={() => setTourStep(2)} className="px-4 py-2 bg-copper hover:bg-copper-hover text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1">
+                    Next Highlight <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {tourStep === 2 && (
+              <div>
+                <h3 className="text-lg font-bold font-sora text-slate-900 dark:text-white mb-2">Dynamic Smart Health Score</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed mb-6">
+                  Maintain your operational readiness score out of 100. By completing the setup checklists, connecting workflow tools, and establishing active estimates, you secure churn resilience and platform excellence.
+                </p>
+                <div className="flex items-center justify-between">
+                  <button onClick={() => setTourStep(1)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-medium">Back</button>
+                  <button onClick={() => setTourStep(3)} className="px-4 py-2 bg-copper hover:bg-copper-hover text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1">
+                    Next Highlight <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {tourStep === 3 && (
+              <div>
+                <h3 className="text-lg font-bold font-sora text-slate-900 dark:text-white mb-2">Universal Activity Timeline</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed mb-6">
+                  A centralized event bus logs every single action: client approvals, custom integrations requested, SLA support replies, and price list edits. Enjoy complete audit control over your team operations.
+                </p>
+                <div className="flex items-center justify-between">
+                  <button onClick={() => setTourStep(2)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-medium">Back</button>
+                  <button onClick={finishTour} className="px-5 py-2.5 bg-copper hover:bg-copper-hover text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1">
+                    Begin Operations <Check className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Title Banner Helper ───────────────────────────── */}
+      {!isHelperDismissed('dashboard_welcome') && (
+        <div className="bg-gradient-to-r from-navy-950 to-navy-900 border border-navy-800 rounded-2xl p-5 mb-6 relative overflow-hidden transition-all duration-200">
+          <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial-gradient opacity-10 pointer-events-none" />
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-copper-950/45 border border-copper-900/40 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5 text-copper" />
+            </div>
+            <div className="flex-1 pr-6">
+              <h4 className="text-sm font-bold text-white font-sora">Peak Contractor Operations Engine</h4>
+              <p className="text-slate-400 text-xs mt-1 leading-relaxed max-w-2xl">
+                Welcome to your fully integrated contractor operations workspace. Utilize the **Setup Checklist** below to configure professional estimate models, trade pricing sheets, and custom tools integrations.
+              </p>
+            </div>
+            <button
+              onClick={() => dismissHelper('dashboard_welcome')}
+              className="text-slate-500 hover:text-slate-300 transition-colors p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-sora font-extrabold text-slate-900 dark:text-white">Dashboard</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Your bidding pipeline at a glance</p>
+          <h1 className="text-2xl sm:text-3xl font-sora font-extrabold text-slate-900 dark:text-white">Command Center</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Unified intelligence, estimating, & integrations hub</p>
         </div>
-        <button
-          id="dashboard-new-bid"
-          onClick={() => navigate('/projects')}
-          className="flex items-center justify-center gap-2 px-5 py-3 bg-copper hover:bg-copper-hover active:bg-copper-600 text-white rounded-xl font-bold text-sm transition-all shadow-md hover:-translate-y-0.5 active:translate-y-0 w-full sm:w-auto"
-        >
-          <Plus className="w-4 h-4" />
-          New Bid
-        </button>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-        <KpiCard
-          label="Total Pipeline"
-          value={formatCurrency(kpis.pipeline)}
-          icon={TrendingUp}
-          color="navy"
-          sub={`${projects.length} total projects`}
-        />
-        <KpiCard
-          label="Projects Won"
-          value={kpis.won.toString()}
-          icon={CheckCircle}
-          color="emerald"
-          sub="Closed deals"
-        />
-        <KpiCard
-          label="Active Bids"
-          value={kpis.active.toString()}
-          icon={Briefcase}
-          color="amber"
-          sub="In progress"
-        />
-        <KpiCard
-          label="Win Rate"
-          value={`${kpis.winRate}%`}
-          icon={Target}
-          color="violet"
-          sub="Of all submitted"
-        />
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-8">
-        {/* Bar chart */}
-        <div className="lg:col-span-3 bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card p-6 rounded-2xl">
-          <h2 className="text-sm sm:text-base font-sora font-bold text-slate-900 dark:text-white mb-1">Projects by Status</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">Distribution across pipeline stages</p>
-          <div className="h-[240px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={statusData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid, #E2E8F0)" className="stroke-slate-100 dark:stroke-navy-800" />
-                <XAxis 
-                  dataKey="status" 
-                  tick={{ fontSize: 11, fill: '#64748B' }} 
-                  axisLine={false} 
-                  tickLine={false}
-                />
-                <YAxis 
-                  tick={{ fontSize: 11, fill: '#64748B' }} 
-                  axisLine={false} 
-                  tickLine={false}
-                />
-                <Tooltip
-                  cursor={{ fill: 'rgba(197, 139, 92, 0.04)' }}
-                  contentStyle={{ 
-                    borderRadius: '12px', 
-                    border: '1px solid var(--tooltip-border, #E2E8F0)',
-                    background: 'var(--tooltip-bg, #FFFFFF)',
-                    fontSize: '12px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                  }}
-                  itemStyle={{ color: 'var(--tooltip-text, #111827)' }}
-                  labelClassName="font-semibold text-slate-800 dark:text-slate-100"
-                />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={32}>
-                  {statusData.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Pie chart */}
-        <div className="lg:col-span-2 bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card p-6 rounded-2xl flex flex-col justify-between">
-          <div>
-            <h2 className="text-sm sm:text-base font-sora font-bold text-slate-900 dark:text-white mb-1">Projects by Trade</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Your trade mix</p>
-          </div>
-          {tradeData.length === 0 ? (
-            <div className="flex items-center justify-center h-48 text-slate-500 dark:text-slate-400 text-sm">
-              No data yet
-            </div>
-          ) : (
-            <div className="h-[240px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie 
-                    data={tradeData} 
-                    dataKey="value" 
-                    nameKey="trade" 
-                    cx="50%" 
-                    cy="45%" 
-                    outerRadius={75} 
-                    innerRadius={45} 
-                    paddingAngle={3}
-                  >
-                    {tradeData.map((_, i) => (
-                      <Cell key={i} fill={TRADE_COLORS[i % TRADE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Legend 
-                    iconSize={8} 
-                    iconType="circle" 
-                    wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} 
-                    className="text-slate-900 dark:text-white"
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      borderRadius: '12px', 
-                      border: '1px solid var(--tooltip-border, #E2E8F0)', 
-                      background: 'var(--tooltip-bg, #FFFFFF)',
-                      fontSize: '12px' 
-                    }} 
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Recent Projects */}
-      <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card rounded-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-app-border dark:border-navy-800">
-          <h2 className="text-sm sm:text-base font-sora font-bold text-slate-900 dark:text-white">Recent Projects</h2>
+        <div className="flex gap-3 w-full sm:w-auto">
           <button
-            onClick={() => navigate('/projects')}
-            className="flex items-center gap-1.5 text-xs text-copper font-bold hover:text-copper-hover transition-colors"
+            onClick={() => navigate('/success')}
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-navy-950 dark:hover:bg-navy-900 border border-slate-200 dark:border-navy-800 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-sm transition-all"
           >
-            View all <ArrowRight className="w-3.5 h-3.5" />
+            <Star className="w-4 h-4 text-copper" />
+            Concierge Setup
+          </button>
+          <button
+            id="dashboard-new-bid"
+            onClick={() => navigate('/projects')}
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-3 bg-copper hover:bg-copper-hover active:bg-copper-600 text-white rounded-xl font-bold text-sm transition-all shadow-md hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <Plus className="w-4 h-4" />
+            New Bid
           </button>
         </div>
+      </div>
 
-        {recentProjects.length === 0 ? (
-          <div className="py-16 text-center px-6">
-            <div className="w-12 h-12 bg-app-bg dark:bg-navy-950 rounded-xl flex items-center justify-center mx-auto mb-4 border border-app-border dark:border-navy-800">
-              <Briefcase className="w-6 h-6 text-slate-500 dark:text-slate-400" />
-            </div>
-            <p className="text-slate-900 dark:text-white text-sm font-semibold">No projects yet</p>
-            <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">Create your first bid to get started</p>
-            <button
-              onClick={() => navigate('/projects')}
-              className="mt-5 px-5 py-2.5 bg-copper hover:bg-copper-hover text-white rounded-xl text-sm font-bold transition-all shadow-md active:translate-y-0 hover:-translate-y-0.5"
-            >
-              Create First Bid
-            </button>
+      {/* Primary Grid Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+        
+        {/* Left Grid: KPIs, Charts, Bids (Columns 1-7) */}
+        <div className="lg:col-span-7 space-y-6">
+          
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiCard
+              label="Total Pipeline"
+              value={formatCurrency(kpis.pipeline)}
+              icon={TrendingUp}
+              color="navy"
+              sub={`${projects.length} total projects`}
+            />
+            <KpiCard
+              label="Projects Won"
+              value={kpis.won.toString()}
+              icon={CheckCircle}
+              color="emerald"
+              sub="Closed deals"
+            />
+            <KpiCard
+              label="Active Bids"
+              value={kpis.active.toString()}
+              icon={Briefcase}
+              color="amber"
+              sub="In progress"
+            />
+            <KpiCard
+              label="Win Rate"
+              value={`${kpis.winRate}%`}
+              icon={Target}
+              color="violet"
+              sub="Of all submitted"
+            />
           </div>
-        ) : (
-          <div className="divide-y divide-app-border dark:divide-navy-800 overflow-x-auto scrollbar-thin">
-            <div className="min-w-[600px]">
-              {recentProjects.map(project => (
-                <div
-                  key={project.id}
-                  onClick={() => navigate(`/projects/${project.id}`)}
-                  className="flex items-center justify-between px-6 py-4 hover:bg-slate-50 dark:hover:bg-navy-950/60 cursor-pointer transition-colors"
-                >
-                  <div className="flex-1 min-w-0 pr-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{project.name}</span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 px-2 py-0.5 bg-slate-100 dark:bg-navy-950 rounded border border-slate-200 dark:border-navy-800 capitalize font-medium">
-                        {project.trade}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{project.client_name || 'No client'}</div>
-                  </div>
-                  
-                  <div className="flex items-center gap-6">
-                    <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider ${getStatusClass(project.status)}`}>
-                      {project.status}
-                    </span>
-                    <span className="text-sm font-bold text-slate-900 dark:text-white min-w-[100px] text-right">
-                      {formatCurrency(project.total_value || 0)}
-                    </span>
-                    <ArrowRight className="w-4 h-4 text-slate-400 dark:text-navy-700" />
-                  </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+            {/* Status Chart */}
+            <div className="md:col-span-3 bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card p-5 rounded-2xl flex flex-col justify-between">
+              <div>
+                <h2 className="text-sm font-sora font-bold text-slate-900 dark:text-white mb-1">Projects by Status</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">Distribution across pipeline stages</p>
+              </div>
+              <div className="h-[210px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={statusData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-slate-100 dark:stroke-navy-800" />
+                    <XAxis 
+                      dataKey="status" 
+                      tick={{ fontSize: 11, fill: '#64748B' }} 
+                      axisLine={false} 
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 11, fill: '#64748B' }} 
+                      axisLine={false} 
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      cursor={{ fill: 'rgba(197, 139, 92, 0.04)' }}
+                      contentStyle={{ 
+                        borderRadius: '12px', 
+                        border: '1px solid var(--tooltip-border, #E2E8F0)',
+                        background: 'var(--tooltip-bg, #FFFFFF)',
+                        fontSize: '12px',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                      }}
+                      itemStyle={{ color: 'var(--tooltip-text, #111827)' }}
+                      labelClassName="font-semibold text-slate-800 dark:text-slate-100"
+                    />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={32}>
+                      {statusData.map((entry, i) => (
+                        <Cell key={i} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Trade mix Chart */}
+            <div className="md:col-span-2 bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card p-5 rounded-2xl flex flex-col justify-between">
+              <div>
+                <h2 className="text-sm font-sora font-bold text-slate-900 dark:text-white mb-1">Trade Mix</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 font-inter">Core segments</p>
+              </div>
+              {tradeData.length === 0 ? (
+                <div className="flex items-center justify-center h-44 text-slate-500 dark:text-slate-400 text-xs">
+                  No trade data
                 </div>
-              ))}
+              ) : (
+                <div className="h-[210px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie 
+                        data={tradeData} 
+                        dataKey="value" 
+                        nameKey="trade" 
+                        cx="50%" 
+                        cy="45%" 
+                        outerRadius={65} 
+                        innerRadius={40} 
+                        paddingAngle={3}
+                      >
+                        {tradeData.map((_, i) => (
+                          <Cell key={i} fill={TRADE_COLORS[i % TRADE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Legend 
+                        iconSize={6} 
+                        iconType="circle" 
+                        wrapperStyle={{ fontSize: '10px', paddingTop: '5px' }} 
+                        className="text-slate-900 dark:text-white font-inter"
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          borderRadius: '12px', 
+                          border: '1px solid var(--tooltip-border, #E2E8F0)', 
+                          background: 'var(--tooltip-bg, #FFFFFF)',
+                          fontSize: '11px' 
+                        }} 
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
           </div>
-        )}
+
+          {/* Recent Projects Table */}
+          <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4.5 border-b border-app-border dark:border-navy-800">
+              <h2 className="text-sm font-sora font-bold text-slate-900 dark:text-white">Recent Bid Submissions</h2>
+              <button
+                onClick={() => navigate('/projects')}
+                className="flex items-center gap-1.5 text-xs text-copper font-bold hover:text-copper-hover transition-colors"
+              >
+                View all <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {recentProjects.length === 0 ? (
+              <div className="py-16 text-center px-6">
+                <div className="w-12 h-12 bg-slate-50 dark:bg-navy-950 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-app-border dark:border-navy-850">
+                  <Briefcase className="w-5 h-5 text-slate-400 dark:text-slate-600" />
+                </div>
+                <p className="text-slate-900 dark:text-white text-sm font-semibold">No estimates generated yet</p>
+                <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 max-w-sm mx-auto">
+                  Create your first professional estimation model to enable full operations dashboards, margin stats, and client feedback pipelines.
+                </p>
+                <button
+                  onClick={() => navigate('/projects')}
+                  className="mt-5 px-5 py-2.5 bg-copper hover:bg-copper-hover text-white rounded-xl text-sm font-bold transition-all shadow-md"
+                >
+                  Create First Estimate
+                </button>
+              </div>
+            ) : (
+              <div className="divide-y divide-app-border dark:divide-navy-800 overflow-x-auto scrollbar-thin">
+                <div className="min-w-[600px]">
+                  {recentProjects.map(project => (
+                    <div
+                      key={project.id}
+                      onClick={() => navigate(`/projects/${project.id}`)}
+                      className="flex items-center justify-between px-6 py-4 hover:bg-slate-50 dark:hover:bg-navy-950/60 cursor-pointer transition-colors"
+                    >
+                      <div className="flex-1 min-w-0 pr-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{project.name}</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 px-2 py-0.5 bg-slate-100 dark:bg-navy-950 rounded border border-slate-200 dark:border-navy-850 capitalize font-bold">
+                            {project.trade}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{project.client_name || 'No client listed'}</div>
+                      </div>
+                      
+                      <div className="flex items-center gap-6">
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${getStatusClass(project.status)}`}>
+                          {project.status}
+                        </span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-white min-w-[100px] text-right">
+                          {formatCurrency(project.total_value || 0)}
+                        </span>
+                        <ArrowRight className="w-4 h-4 text-slate-400 dark:text-navy-700" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Grid: Health Score, Setup, Events (Columns 8-10) */}
+        <div className="lg:col-span-3 space-y-6">
+          
+          {/* Dashboard Widget: Account Health Score */}
+          <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card p-5 rounded-2xl flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-sora font-bold text-slate-900 dark:text-white">Smart Health Score</h2>
+                <div className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500">
+                  <Heart className="w-4 h-4 fill-current animate-pulse" />
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+                Operational rating based on setup, engagement, branding configuration, and workflow integrations.
+              </p>
+
+              {/* Progress gauge */}
+              <div className="flex items-center gap-4 mb-5">
+                <div className="relative w-16 h-16 rounded-full border-4 border-slate-100 dark:border-navy-950 flex items-center justify-center flex-shrink-0">
+                  <div className="text-base font-extrabold text-slate-900 dark:text-white font-sora">
+                    {healthMetrics.score}
+                  </div>
+                  <div className="absolute inset-0 rounded-full border-4 border-copper border-t-transparent border-r-transparent animate-spin-slow pointer-events-none opacity-40" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-white">
+                    {healthMetrics.score >= 80 ? 'Excellent Status' : healthMetrics.score >= 50 ? 'Medium Status' : 'Attention Required'}
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {healthMetrics.score === 100 ? 'All systems nominal' : 'Optimize to secure power utilization'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Setup items checklist */}
+              <div className="space-y-3.5">
+                {healthMetrics.steps.map(step => (
+                  <div key={step.id} className="flex items-start gap-2.5">
+                    <div className={`mt-0.5 w-4.5 h-4.5 rounded-full flex items-center justify-center flex-shrink-0 border transition-all ${
+                      step.completed 
+                        ? 'bg-emerald-500/10 border-emerald-500 text-emerald-500' 
+                        : 'border-slate-300 dark:border-navy-700 text-slate-400'
+                    }`}>
+                      {step.completed ? <Check className="w-3 h-3 stroke-[3]" /> : <div className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-navy-700" />}
+                    </div>
+                    <div className="flex-1">
+                      <span className={`text-[11px] font-medium leading-tight ${
+                        step.completed ? 'text-slate-500 dark:text-slate-400 line-through' : 'text-slate-800 dark:text-slate-200'
+                      }`}>
+                        {step.name}
+                      </span>
+                      <span className="text-[9px] text-copper font-bold block mt-0.5">+{step.pts} Points</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Quick action direct to client success hub */}
+            {healthMetrics.score < 100 && (
+              <button 
+                onClick={() => navigate('/success')}
+                className="mt-6 w-full py-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-navy-950 dark:hover:bg-navy-900 border border-slate-200 dark:border-navy-850 hover:border-slate-300 dark:hover:border-navy-750 rounded-xl text-xs font-bold text-copper flex items-center justify-center gap-1.5 transition-all"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Boost Health Rating
+              </button>
+            )}
+          </div>
+
+          {/* Activity Events Timeline Feed */}
+          <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card p-5 rounded-2xl flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-copper" />
+                <h2 className="text-sm font-sora font-bold text-slate-900 dark:text-white">Activity Timeline</h2>
+              </div>
+              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Live Logs</span>
+            </div>
+
+            {timelineLoading ? (
+              <div className="py-10 flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-copper border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : events.length === 0 ? (
+              <div className="py-12 text-center">
+                <Info className="w-6 h-6 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
+                <p className="text-xs text-slate-500 dark:text-slate-400">No activity logged yet.</p>
+              </div>
+            ) : (
+              <div className="space-y-4 max-h-[360px] overflow-y-auto pr-1 scrollbar-thin">
+                {events.map((e, index) => (
+                  <div key={e.id || index} className="flex gap-3 relative pl-3.5 last:pb-0 pb-1">
+                    {/* Timeline line */}
+                    {index < events.length - 1 && (
+                      <div className="absolute left-[20px] top-6 bottom-0 w-0.5 bg-slate-100 dark:bg-navy-850" />
+                    )}
+
+                    {/* Timeline indicator circle */}
+                    <div className="absolute left-[13px] top-1.5 w-4 h-4 rounded-full bg-slate-50 dark:bg-navy-950 border-2 border-copper flex items-center justify-center flex-shrink-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-copper" />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] font-bold text-slate-800 dark:text-white capitalize truncate">
+                          {e.metadata?.title || `${e.entity_type} ${e.action_type}`}
+                        </span>
+                        <span className="text-[8px] font-semibold text-slate-400 whitespace-nowrap">
+                          {new Date(e.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-[9.5px] text-slate-500 dark:text-slate-400 leading-normal mt-0.5">
+                        {e.metadata?.description || `Operation performed on ${e.entity_type}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
       </div>
     </div>
   );
@@ -282,15 +625,15 @@ function KpiCard({
   };
 
   return (
-    <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card rounded-2xl p-6 transition-all hover:border-slate-300 dark:hover:border-navy-700">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</span>
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${colorMap[color]}`}>
-          <Icon className="w-4.5 h-4.5" />
+    <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card rounded-2xl p-5 transition-all hover:border-slate-300 dark:hover:border-navy-700">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</span>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${colorMap[color]}`}>
+          <Icon className="w-4 h-4" />
         </div>
       </div>
-      <div className="text-2xl sm:text-3xl font-sora font-extrabold text-slate-900 dark:text-white tracking-tight">{value}</div>
-      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{sub}</div>
+      <div className="text-2xl font-sora font-extrabold text-slate-900 dark:text-white tracking-tight leading-none">{value}</div>
+      <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-2">{sub}</div>
     </div>
   );
 }

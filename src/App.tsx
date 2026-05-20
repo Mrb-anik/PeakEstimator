@@ -16,6 +16,8 @@ import Settings from './pages/Settings';
 import ClientPortal from './pages/ClientPortal';
 import LandingPage from './pages/LandingPage';
 import AdminPortal from './pages/AdminPortal';
+import ClientSuccess from './pages/ClientSuccess';
+import SupportDesk from './pages/SupportDesk';
 
 function SmartRoot() {
   const [session, setSession] = useState<boolean | null>(null);
@@ -100,6 +102,8 @@ function App() {
         <Route path="/price-book"  element={<ProtectedRoute><AppLayout><PriceBook /></AppLayout></ProtectedRoute>} />
         <Route path="/settings"    element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
         <Route path="/admin"       element={<ProtectedRoute><AppLayout><AdminPortal /></AppLayout></ProtectedRoute>} />
+        <Route path="/success"     element={<ProtectedRoute><AppLayout><ClientSuccess /></AppLayout></ProtectedRoute>} />
+        <Route path="/support"     element={<ProtectedRoute><AppLayout><SupportDesk /></AppLayout></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

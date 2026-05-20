@@ -15,8 +15,99 @@ export interface Profile {
   default_equipment_markup: number;
   default_tax_rate: number;
   is_admin?: boolean;
+  onboarding_completed: boolean;
+  onboarding_step: number;
+  notification_prefs: {
+    email: boolean;
+    in_app: boolean;
+    digest: boolean;
+  };
+  has_dismissed_helpers: string[];
+  health_score: number;
+  customer_tags: string[];
+  assigned_success_manager: string | null;
+  concierge_requested: boolean;
+  concierge_details: Record<string, any>;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface ActivityEvent {
+  id: string;
+  user_id: string;
+  entity_type: 'estimate' | 'support' | 'integration' | 'member' | 'onboarding';
+  entity_id?: string;
+  action_type: string;
+  metadata: Record<string, any>;
+  created_at: string;
+}
+
+export interface IntegrationRequest {
+  id: string;
+  user_id: string;
+  business_need: string;
+  current_tool: string;
+  desired_workflow: string;
+  urgency: 'low' | 'medium' | 'high' | 'critical';
+  expected_outcome: string;
+  attachment_url?: string;
+  status: 'pending review' | 'under analysis' | 'planned' | 'in progress' | 'completed' | 'rejected';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  admin_notes?: string;
+  assigned_to?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  user_id: string;
+  category: 'billing' | 'technical' | 'bug' | 'feature' | 'other';
+  subject: string;
+  message: string;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  status: 'open' | 'in progress' | 'resolved' | 'closed';
+  attachment_url?: string;
+  assigned_to?: string;
+  admin_notes?: string;
+  sla_timer?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TicketResponse {
+  id: string;
+  ticket_id: string;
+  user_id: string;
+  message: string;
+  is_internal: boolean;
+  created_at: string;
+  user_profile?: Partial<Profile>;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'activity' | 'support';
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface EmailLog {
+  id: string;
+  user_id?: string;
+  email_type: string;
+  recipient: string;
+  subject: string;
+  status: 'sent' | 'delivered' | 'failed' | 'opened' | 'clicked' | 'bounced';
+  retry_count: number;
+  failed_reason?: string;
+  tracking_token?: string;
+  headers: Record<string, any>;
+  created_at: string;
+  updated_at: string;
 }
 
 

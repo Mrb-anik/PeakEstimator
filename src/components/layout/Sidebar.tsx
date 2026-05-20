@@ -1,14 +1,17 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, BookOpen, Settings, LogOut, ShieldAlert, X, Menu, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Briefcase, BookOpen, Settings, LogOut, ShieldAlert, X, Menu, Sun, Moon, Award, HelpCircle, Bell } from 'lucide-react';
 import { supabase } from '../../api/supabase';
 import { useAppStore } from '../../store/useAppStore';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
+import NotificationPanel from './NotificationPanel';
 
 const navItems = [
   { path: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
   { path: '/projects',   label: 'Projects',   icon: Briefcase },
   { path: '/price-book', label: 'Price Book', icon: BookOpen },
+  { path: '/success',    label: 'Client Success', icon: Award },
+  { path: '/support',    label: 'Support Desk', icon: HelpCircle },
   { path: '/settings',   label: 'Settings',   icon: Settings },
 ];
 
@@ -29,6 +32,8 @@ export default function Sidebar() {
   const profile = useAppStore(s => s.profile);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     // Sync external dark mode changes if any
@@ -38,6 +43,36 @@ export default function Sidebar() {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+
+    const channel = supabase
+      .channel('sidebar:notifications')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+        fetchUnreadCount();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const fetchUnreadCount = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { count, error } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false);
+
+    if (!error && count !== null) {
+      setUnreadCount(count);
+    }
+  };
 
   const toggleTheme = () => {
     const nextDark = !isDark;
@@ -135,6 +170,22 @@ export default function Sidebar() {
             <span className="text-[10px] bg-navy-700 text-slate-300 px-2 py-0.5 rounded-md border border-navy-700">Auto</span>
           </button>
 
+          {/* Notifications Toggle */}
+          <button
+            onClick={() => setShowNotifications(prev => !prev)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-navy-700 hover:text-white transition-all relative"
+          >
+            <span className="flex items-center gap-2">
+              <Bell style={{ width: 14, height: 14 }} className={unreadCount > 0 ? "text-copper animate-pulse" : "text-slate-400"} />
+              Notifications
+            </span>
+            {unreadCount > 0 && (
+              <span className="bg-copper text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+
           <button onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:bg-navy-700 hover:text-rose-400 transition-all">
             <LogOut style={{ width: 14, height: 14 }} className="flex-shrink-0" />
@@ -146,7 +197,7 @@ export default function Sidebar() {
           </div>
         </div>
       </aside>
-
+ 
       {/* ── Mobile top bar ──────────────────────────── */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white dark:bg-navy-900 border-b border-slate-100 dark:border-navy-800 shadow-sm h-14 flex items-center justify-between px-4 transition-colors">
         <div className="flex items-center gap-2">
@@ -156,6 +207,14 @@ export default function Sidebar() {
         <div className="flex items-center gap-1">
           <button onClick={toggleTheme} className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-lg transition-all">
             {isDark ? <Sun style={{ width: 18, height: 18 }} /> : <Moon style={{ width: 18, height: 18 }} />}
+          </button>
+          <button onClick={() => setShowNotifications(prev => !prev)} className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-lg transition-all relative">
+            <Bell style={{ width: 18, height: 18 }} className={unreadCount > 0 ? "text-copper" : ""} />
+            {unreadCount > 0 && (
+              <span className="absolute top-1.5 right-1.5 bg-copper text-white text-[8px] font-bold px-1 py-0.2 rounded-full min-w-3.5 h-3.5 flex items-center justify-center">
+                {unreadCount}
+              </span>
+            )}
           </button>
           <button onClick={() => setMobileOpen(true)} className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-lg transition-all">
             <Menu style={{ width: 20, height: 20 }} />
@@ -254,6 +313,8 @@ export default function Sidebar() {
           </NavLink>
         )}
       </nav>
+
+      {showNotifications && <NotificationPanel onClose={() => setShowNotifications(false)} />}
     </>
   );
 }
