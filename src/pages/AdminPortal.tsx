@@ -418,18 +418,21 @@ export default function AdminPortal() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
+      const trackingToken = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
       const { error } = await supabase
         .from('email_logs')
         .insert({
           user_id: user?.id || null,
-          email_type: selectedEmailType,
-          recipient: testRecipient.trim(),
+          template_type: selectedEmailType,
+          recipient_email: testRecipient.trim(),
           subject: tmpl.subject,
-          status: 'sent',
-          tracking_token: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2),
-          headers: {
+          delivery_status: 'sent',
+          provider: 'smtp',
+          provider_message_id: trackingToken,
+          metadata: {
             'X-Resend-Sandbox': 'true',
-            'SMTP-Server': 'peakestimator.top'
+            'SMTP-Server': 'peakestimator.top',
+            'tracking_token': trackingToken
           }
         });
 
@@ -1274,11 +1277,11 @@ Please assign an administrator immediately to prevent collision and address.`,
                   {emailLogs.map(log => (
                     <div key={log.id} className="p-2 bg-slate-50 dark:bg-navy-950 border border-slate-100 dark:border-navy-900 rounded-lg flex items-center justify-between text-[9px] gap-2">
                       <div className="min-w-0">
-                        <div className="font-bold text-slate-900 dark:text-white truncate">{log.recipient}</div>
+                        <div className="font-bold text-slate-900 dark:text-white truncate">{log.recipient_email}</div>
                         <div className="text-slate-400 mt-0.5 truncate">{log.subject}</div>
                       </div>
                       <span className="bg-emerald-50 text-emerald-600 border border-emerald-250 px-2 py-0.2 rounded font-bold uppercase tracking-wider">
-                        {log.status}
+                        {log.delivery_status}
                       </span>
                     </div>
                   ))}

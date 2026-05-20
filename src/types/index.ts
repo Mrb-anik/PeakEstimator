@@ -16,6 +16,7 @@ export interface Profile {
   default_tax_rate: number;
   is_admin?: boolean;
   onboarding_completed: boolean;
+  onboarding_dismissed?: boolean;
   onboarding_step: number;
   notification_prefs: {
     email: boolean;
@@ -98,16 +99,16 @@ export interface Notification {
 export interface EmailLog {
   id: string;
   user_id?: string;
-  email_type: string;
-  recipient: string;
+  recipient_email: string;
+  template_type: string;
   subject: string;
-  status: 'sent' | 'delivered' | 'failed' | 'opened' | 'clicked' | 'bounced';
-  retry_count: number;
-  failed_reason?: string;
-  tracking_token?: string;
-  headers: Record<string, any>;
+  delivery_status: 'sent' | 'delivered' | 'failed' | 'opened' | 'clicked' | 'bounced';
+  provider: string;
+  provider_message_id?: string;
+  error_message?: string;
+  html_preview?: string;
+  metadata: Record<string, any>;
   created_at: string;
-  updated_at: string;
 }
 
 

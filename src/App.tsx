@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { supabase } from './api/supabase';
 import { useAppStore } from './store/useAppStore';
 
@@ -61,6 +61,35 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const profile = useAppStore(s => s.profile);
+  const fetchProfile = useAppStore(s => s.fetchProfile);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (profile !== null) {
+      setLoading(false);
+    } else {
+      fetchProfile().finally(() => setLoading(false));
+    }
+  }, [profile, fetchProfile]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-navy-950">
+        <div className="w-8 h-8 border-4 border-navy-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!profile || !profile.is_admin) {
+    // Render nothing and redirect
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+}
+
 function AppLayout({ children }: { children: React.ReactNode }) {
   const fetchProfile = useAppStore(s => s.fetchProfile);
 
@@ -101,7 +130,7 @@ function App() {
         <Route path="/projects/:id" element={<ProtectedRoute><AppLayout><EstimatorWorkspace /></AppLayout></ProtectedRoute>} />
         <Route path="/price-book"  element={<ProtectedRoute><AppLayout><PriceBook /></AppLayout></ProtectedRoute>} />
         <Route path="/settings"    element={<ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>} />
-        <Route path="/admin"       element={<ProtectedRoute><AppLayout><AdminPortal /></AppLayout></ProtectedRoute>} />
+        <Route path="/admin"       element={<ProtectedRoute><AppLayout><AdminRoute><AdminPortal /></AdminRoute></AppLayout></ProtectedRoute>} />
         <Route path="/success"     element={<ProtectedRoute><AppLayout><ClientSuccess /></AppLayout></ProtectedRoute>} />
         <Route path="/support"     element={<ProtectedRoute><AppLayout><SupportDesk /></AppLayout></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />

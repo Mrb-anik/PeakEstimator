@@ -68,22 +68,23 @@ export function useEventBus() {
           .from('email_logs')
           .insert({
             user_id: user.id,
-            email_type: params.emailType || 'activity',
-            recipient: params.recipientEmail,
+            template_type: params.emailType || 'activity',
+            recipient_email: params.recipientEmail,
             subject: params.emailSubject || params.title,
-            status: 'sent',
-            tracking_token: trackingToken,
-            headers: {
-              'Message-ID': `<${trackingToken}@peakestimator.top>`,
-              'X-Entity-Ref': `${params.entityType}:${params.entityId || 'none'}`,
+            delivery_status: 'sent',
+            provider: 'resend',
+            provider_message_id: trackingToken,
+            metadata: {
+              'message_id': `<${trackingToken}@peakestimator.top>`,
+              'entity_ref': `${params.entityType}:${params.entityId || 'none'}`,
+              'entity_type': params.entityType,
+              'action_type': params.actionType,
             },
           });
 
         if (emailErr) {
           console.error('Event Bus email logging failed:', emailErr.message);
         } else {
-          // If Resend API key was present in edge functions, we'd trigger it.
-          // For sandbox purposes, we show a toast notification simulating the delivery
           console.log(`[Email System] Dispatched ${params.emailType} email to ${params.recipientEmail}`);
         }
       }

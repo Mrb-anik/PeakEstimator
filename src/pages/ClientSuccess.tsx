@@ -34,9 +34,13 @@ export default function ClientSuccess() {
 
   const fetchRequests = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data, error } = await supabase
         .from('integration_requests')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       if (!error && data) {
         setExistingRequests(data);

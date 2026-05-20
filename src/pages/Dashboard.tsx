@@ -6,14 +6,15 @@ import {
 } from 'recharts';
 import {
   TrendingUp, Briefcase, CheckCircle, Target, Plus, ArrowRight,
-  Activity, Heart, Info, Sparkles, Check, X, ChevronRight, HelpCircle,
-  Zap, Award, ShieldAlert, Star
+  Activity, Heart, Info, Sparkles, Check, X, ChevronRight,
+  Zap, Star
 } from 'lucide-react';
 import { useProjects } from '../hooks/useProjects';
 import { useAppStore } from '../store/useAppStore';
 import { useEventBus } from '../hooks/useEventBus';
 import { supabase } from '../api/supabase';
 import { formatCurrency } from '../lib/calculations';
+import WelcomeModal from '../components/layout/WelcomeModal';
 import type { StatusType, ActivityEvent } from '../types';
 
 const STATUS_COLORS: Record<StatusType, string> = {
@@ -37,8 +38,11 @@ export default function Dashboard() {
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(true);
   const [tourStep, setTourStep] = useState<number | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  // Track profile-loaded state to prevent flashing before data arrives
+  const [profileChecked, setProfileChecked] = useState(false);
 
-  // 1. Fetch Timeline Events
+  // 1. Fetch Timeline Events — scoped to current user
   useEffect(() => {
     fetchEvents();
 
@@ -56,9 +60,13 @@ export default function Dashboard() {
 
   const fetchEvents = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
       const { data, error } = await supabase
         .from('activity_events')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(8);
 
@@ -72,18 +80,41 @@ export default function Dashboard() {
     }
   };
 
-  // 2. Check if we need to start the Guided Tour
+  // 2. Welcome modal: show only if onboarding NOT completed AND NOT dismissed
+  //    Check both Supabase profile AND localStorage to prevent any flash/repetition
   useEffect(() => {
-    if (profile && !profile.has_dismissed_helpers?.includes('dashboard_tour')) {
-      // Trigger short delay for smooth entrance
-      const timer = setTimeout(() => {
-        setTourStep(1);
-      }, 1000);
-      return () => clearTimeout(timer);
+    if (!profile) return;
+    setProfileChecked(true);
+
+    const userId = profile.id;
+    const localCompleted = localStorage.getItem(`peak_onboarding_completed_${userId}`) === 'true';
+    const localDismissed = localStorage.getItem(`peak_onboarding_dismissed_${userId}`) === 'true';
+
+    const isCompleted = profile.onboarding_completed || localCompleted;
+    const isDismissed = (profile.onboarding_dismissed ?? false) || localDismissed;
+
+    if (!isCompleted && !isDismissed) {
+      // Small delay so the page renders first — avoids janky overlap
+      const t = setTimeout(() => setShowWelcomeModal(true), 600);
+      return () => clearTimeout(t);
     }
   }, [profile]);
 
-  // Log a dashboard view event for timeline demonstration if timeline is empty
+  // 3. Guided Tour: only after profile loaded, welcome modal closed, not already dismissed
+  useEffect(() => {
+    if (!profile || showWelcomeModal || !profileChecked) return;
+
+    const userId = profile.id;
+    const localTourDismissed = localStorage.getItem(`peak_helper_dismissed_dashboard_tour_${userId}`) === 'true';
+    const dbTourDismissed = profile.has_dismissed_helpers?.includes('dashboard_tour');
+
+    if (!localTourDismissed && !dbTourDismissed) {
+      const timer = setTimeout(() => setTourStep(1), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [profile, showWelcomeModal, profileChecked]);
+
+  // Log a seed event when timeline is empty (first login demonstration)
   useEffect(() => {
     if (!projectsLoading && events.length === 0 && profile) {
       triggerEvent({
@@ -96,8 +127,15 @@ export default function Dashboard() {
     }
   }, [projectsLoading, events.length, profile]);
 
+  // Dismiss helper: write to BOTH localStorage and Supabase
   const dismissHelper = async (helperId: string) => {
     if (!profile) return;
+    const userId = profile.id;
+
+    // 1. Local storage (instant, survives refresh)
+    localStorage.setItem(`peak_helper_dismissed_${helperId}_${userId}`, 'true');
+
+    // 2. Supabase (persists across devices)
     const current = profile.has_dismissed_helpers || [];
     if (!current.includes(helperId)) {
       const updated = [...current, helperId];
@@ -108,7 +146,6 @@ export default function Dashboard() {
   const finishTour = async () => {
     setTourStep(null);
     await dismissHelper('dashboard_tour');
-    // Trigger success event for completing tour
     triggerEvent({
       entityType: 'onboarding',
       actionType: 'completed',
@@ -117,6 +154,10 @@ export default function Dashboard() {
       sendNotification: true,
       notificationType: 'success'
     });
+  };
+
+  const handleWelcomeClose = () => {
+    setShowWelcomeModal(false);
   };
 
   // KPI calculations
@@ -171,16 +212,29 @@ export default function Dashboard() {
     );
   }
 
+  // Check localStorage first (instant, no flashing) then fall back to DB state
   const isHelperDismissed = (id: string) => {
-    return profile?.has_dismissed_helpers?.includes(id);
+    if (!profile) return true; // Hide while loading — prevents flash
+    const localKey = `peak_helper_dismissed_${id}_${profile.id}`;
+    if (localStorage.getItem(localKey) === 'true') return true;
+    return profile.has_dismissed_helpers?.includes(id) ?? false;
   };
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto animate-fade-in font-inter select-none relative">
+      {/* Welcome Onboarding Modal — shows once for new users, never repeats */}
+      {showWelcomeModal && <WelcomeModal onClose={handleWelcomeClose} />}
       {/* ── Spotlight / Guided Tour Render ───────────────────── */}
       {tourStep !== null && (
         <div className="fixed inset-0 bg-navy/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-800 shadow-premium p-6 rounded-2xl max-w-md w-full animate-scale-in">
+          <div className="bg-white dark:bg-navy-900 border border-slate-200 dark:border-navy-800 shadow-premium p-6 rounded-2xl max-w-md w-full animate-scale-in relative">
+            <button 
+              onClick={finishTour}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-800 border border-transparent hover:border-slate-200 dark:hover:border-navy-750"
+              title="Close Tour"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="w-5 h-5 text-copper animate-bounce" />
               <span className="text-xs font-bold text-copper uppercase tracking-wider">Spotlight Tour ({tourStep}/3)</span>
