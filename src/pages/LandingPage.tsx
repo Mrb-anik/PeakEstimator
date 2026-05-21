@@ -272,12 +272,12 @@ export default function LandingPage() {
         scrolled ? 'bg-[#060B14]/90 border-b border-white/5 backdrop-blur-xl shadow-2xl' : 'bg-transparent'
       }`}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
+          <Link to="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
             <PeakLogo size={32} />
             <span className="font-sora font-bold text-base text-white hidden sm:block">
               Peak<span className="text-copper">Estimator</span>
             </span>
-          </div>
+          </Link>
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
               to="/login"
@@ -919,13 +919,13 @@ export default function LandingPage() {
       <footer className="border-t border-white/5 bg-[#060B14] py-12">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2.5">
+            <Link to="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
               <PeakLogo size={30} />
               <div>
                 <div className="text-sm font-sora font-bold text-white">Peak<span className="text-copper">Estimator</span></div>
                 <div className="text-xs text-white/30">Modern proposals. More closed jobs.</div>
               </div>
-            </div>
+            </Link>
             <div className="text-white/25 text-xs">© {new Date().getFullYear()} PeakEstimator. All rights reserved.</div>
             <div className="flex items-center gap-4">
               <Link to="/login" className="text-xs text-white/40 hover:text-white transition-colors">Sign In</Link>

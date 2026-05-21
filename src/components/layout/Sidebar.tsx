@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Briefcase, BookOpen, Settings, LogOut, ShieldAlert, X, Menu, Sun, Moon, Award, HelpCircle, Bell } from 'lucide-react';
 import { supabase } from '../../api/supabase';
 import { useAppStore } from '../../store/useAppStore';
@@ -110,13 +110,13 @@ export default function Sidebar() {
       <aside className="hidden lg:flex fixed left-0 top-0 h-full w-60 bg-navy border-r border-navy-700 flex-col z-50 shadow-soft">
         {/* Logo */}
         <div className="px-5 py-5 border-b border-navy-700">
-          <div className="flex items-center gap-2.5">
+          <Link to="/dashboard" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
             <PeakLogo size={34} />
             <div>
               <div className="text-sm font-bold text-white leading-none tracking-tight">Peak<span className="text-copper">Estimator</span></div>
               <div className="text-[10px] text-slate-400 font-medium tracking-widest uppercase mt-1">Enterprise</div>
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* Nav */}
@@ -200,10 +200,10 @@ export default function Sidebar() {
  
       {/* ── Mobile top bar ──────────────────────────── */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white dark:bg-navy-900 border-b border-slate-100 dark:border-navy-800 shadow-sm h-14 flex items-center justify-between px-4 transition-colors">
-        <div className="flex items-center gap-2">
+        <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
           <PeakLogo size={28} />
           <span className="text-sm font-bold text-slate-900 dark:text-white">Peak<span className="text-copper">Estimator</span></span>
-        </div>
+        </Link>
         <div className="flex items-center gap-1">
           <button onClick={toggleTheme} className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-lg transition-all">
             {isDark ? <Sun style={{ width: 18, height: 18 }} /> : <Moon style={{ width: 18, height: 18 }} />}
@@ -229,13 +229,13 @@ export default function Sidebar() {
           <div className="relative w-72 bg-navy h-full flex flex-col shadow-2xl animate-slide-in-right">
             {/* Header */}
             <div className="px-5 py-4 border-b border-navy-700 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
+              <Link to="/dashboard" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
                 <PeakLogo size={32} />
                 <div>
                   <div className="text-sm font-bold text-white">Peak<span className="text-copper">Estimator</span></div>
                   <div className="text-xs text-slate-400">Contractor Bidding</div>
                 </div>
-              </div>
+              </Link>
               <button onClick={() => setMobileOpen(false)} className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-navy-700 transition-all">
                 <X style={{ width: 18, height: 18 }} />
               </button>

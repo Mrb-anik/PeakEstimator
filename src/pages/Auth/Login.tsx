@@ -44,9 +44,9 @@ export default function Login() {
       <div className="relative w-full max-w-sm animate-fade-in z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center mb-4">
+          <Link to="/" className="inline-flex items-center justify-center mb-4 hover:opacity-80 transition-opacity">
             <PeakLogo size={54} />
-          </div>
+          </Link>
           <h1 className="text-2xl font-sora font-extrabold text-white">Welcome back</h1>
           <p className="text-slate-400 text-sm mt-1">Sign in to <span className="text-copper font-semibold">PeakEstimator</span></p>
         </div>
