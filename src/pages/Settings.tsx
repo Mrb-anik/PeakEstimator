@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Building2, Mail, Phone, Save, Upload, Percent, Moon, Sun, Bell, Copy, CheckCircle2, Landmark, Send, ShieldCheck, ArrowRight, Zap, CreditCard } from 'lucide-react';
+import { Building2, Mail, Phone, Save, Upload, Percent, RefreshCw, Moon, Sun, Bell, Copy, CheckCircle2, Landmark, Send, ShieldCheck, ArrowRight, Zap, CreditCard } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { supabase } from '../api/supabase';
 import { toast } from 'sonner';
@@ -20,6 +20,7 @@ export default function Settings() {
     default_tax_rate: profile?.default_tax_rate ?? 8,
   });
   const [savingProfile, setSavingProfile] = useState(false);
+  const [syncingBrand, setSyncingBrand] = useState(false);
   const [savingMarkup, setSavingMarkup] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [logoUrl, setLogoUrl] = useState(profile?.company_logo || '');
@@ -138,6 +139,26 @@ export default function Settings() {
     await updateProfile(markupForm);
     toast.success('Default markups saved!');
     setSavingMarkup(false);
+  };
+
+  const handleSyncBrandToProjects = async () => {
+    setSyncingBrand(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from('projects').update({
+        company_name:  profileForm.company_name,
+        company_email: profileForm.company_email,
+        company_phone: profileForm.company_phone,
+        company_logo:  logoUrl,
+      }).eq('user_id', user.id);
+      if (error) throw error;
+      toast.success('Branding synced to all your proposals!');
+    } catch {
+      toast.error('Brand sync failed. Try again.');
+    } finally {
+      setSyncingBrand(false);
+    }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

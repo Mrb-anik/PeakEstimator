@@ -357,3 +357,154 @@ export const CATEGORY_COLORS: Record<CategoryType, string> = {
   equipment: 'category-equipment',
   other: 'category-other',
 };
+
+// ─── New Feature Types ─────────────────────────────────────────────
+
+export interface WireDetails {
+  wire_bank_name: string;
+  wire_account_name: string;
+  wire_account_number: string;
+  wire_routing_number: string;
+  wire_swift: string;
+  wire_instructions: string;
+  wire_contact_email: string;
+}
+
+export interface SystemSettings extends WireDetails {
+  id: string;
+  financing_enabled: boolean;
+  financing_interest_rate: number;
+  financing_max_term_months: number;
+  financing_min_amount: number;
+  updated_at: string;
+}
+
+export interface ProjectSchedule {
+  id: string;
+  project_id: string;
+  user_id: string;
+  title: string;
+  description?: string;
+  scheduled_date: string;
+  scheduled_time?: string;
+  duration_hours: number;
+  assignee_ids: string[];
+  status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+  milestone: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DepositRequest {
+  id: string;
+  project_id: string;
+  user_id: string;
+  amount: number;
+  percentage?: number;
+  description: string;
+  payment_link?: string;
+  status: 'pending' | 'paid' | 'cancelled';
+  paid_at?: string;
+  paid_reference?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProposalAnalytic {
+  id: string;
+  project_id: string;
+  share_token: string;
+  event_type: 'viewed' | 'section_viewed' | 'tier_hovered' | 'time_spent' | 'link_opened';
+  metadata: Record<string, any>;
+  session_id?: string;
+  ip_hash?: string;
+  device_type?: 'mobile' | 'desktop' | 'tablet';
+  created_at: string;
+}
+
+export interface ProposalQuestion {
+  id: string;
+  project_id: string;
+  share_token: string;
+  client_name?: string;
+  client_email?: string;
+  question: string;
+  answer?: string;
+  answered_at?: string;
+  answered_by?: string;
+  is_public: boolean;
+  created_at: string;
+}
+
+export interface RevisionRequest {
+  id: string;
+  project_id: string;
+  share_token: string;
+  client_name?: string;
+  client_email?: string;
+  requested_changes: string;
+  specific_items: any[];
+  status: 'pending' | 'in_review' | 'revised' | 'closed';
+  contractor_notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaintenanceContract {
+  id: string;
+  user_id: string;
+  project_id?: string;
+  client_name: string;
+  client_email: string;
+  client_phone?: string;
+  trade: TradeType;
+  title: string;
+  description?: string;
+  monthly_amount: number;
+  billing_cycle: 'monthly' | 'quarterly' | 'annually';
+  start_date?: string;
+  end_date?: string;
+  status: 'active' | 'paused' | 'cancelled' | 'expired';
+  auto_renew: boolean;
+  scope_of_work?: string;
+  visit_frequency?: string;
+  inclusions?: string[];
+  exclusions?: string[];
+  signed_at?: string;
+  signature_data?: string;
+  share_token: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SubcontractorBid {
+  id: string;
+  project_id: string;
+  user_id: string;
+  sub_name: string;
+  sub_email: string;
+  sub_phone?: string;
+  trade_scope: string;
+  scope_items: any[];
+  bid_amount?: number;
+  notes?: string;
+  status: 'invited' | 'viewed' | 'bid_submitted' | 'accepted' | 'rejected';
+  bid_token: string;
+  invite_sent_at: string;
+  bid_submitted_at?: string;
+  accepted_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BroadcastEmail {
+  id: string;
+  sent_by?: string;
+  subject: string;
+  body: string;
+  target_tier?: 'all' | 'free' | 'pro' | 'enterprise';
+  recipient_count: number;
+  status: 'draft' | 'sent' | 'failed';
+  sent_at?: string;
+  created_at: string;
+}

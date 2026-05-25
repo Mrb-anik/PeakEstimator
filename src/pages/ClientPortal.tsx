@@ -6,7 +6,9 @@ import MultiOptionTiers from '../components/estimator/MultiOptionTiers';
 import type { Project, ProjectItem } from '../types';
 import { TRADE_EMOJIS } from '../types';
 import { toast } from 'sonner';
+import { MessageCircle, ChevronRight, Send, CheckCircle, RefreshCw, X } from 'lucide-react';
 import { eventBus } from '../lib/eventBus';
+import { trackEvent, initTimeTracking } from '../lib/proposalAnalytics';
 
 // ── Canvas Signature Pad ─────────────────────────────────────────────────────
 function SignaturePad({
@@ -153,6 +155,16 @@ export default function ClientPortal() {
   const [signatureError, setSignatureError] = useState(false);
 
   const [financingRate, setFinancingRate] = useState(9.99);
+  // Q&A
+  const [showQA, setShowQA] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [clientQName, setClientQName] = useState('');
+  const [submittingQ, setSubmittingQ] = useState(false);
+  const [questionSent, setQuestionSent] = useState(false);
+  // Deposits
+  const [deposits, setDeposits] = useState<any[]>([]);
+  // Revision structured fields
+  const [revisionItems, setRevisionItems] = useState<string>('');
   const [financingMonths, setFinancingMonths] = useState(60);
   const [financingMinAmount, setFinancingMinAmount] = useState(1000);
   const [financingTerm, setFinancingTerm] = useState(60);
@@ -198,6 +210,14 @@ export default function ClientPortal() {
       } catch (err) {
         console.error('Failed to load system settings financing defaults', err);
       }
+
+      // Load deposit requests
+      const { data: depositData } = await supabase.from('deposit_requests').select('*').eq('project_id', proj.id).eq('status', 'pending');
+      setDeposits(depositData || []);
+
+      // Track analytics
+      await trackEvent(proj.id, shareToken!, 'viewed', { client: proj.client_name });
+      initTimeTracking(proj.id, shareToken!);
 
       // Trigger proposal viewed event
       eventBus.emit('proposal.viewed', { 
@@ -297,6 +317,15 @@ export default function ClientPortal() {
       console.error('Changes request error:', error);
       toast.error('Failed to submit. Please try again.');
     } else {
+      // Also insert structured revision request
+      await supabase.from('revision_requests').insert({
+        project_id: project!.id,
+        share_token: shareToken!,
+        client_name: project!.client_name,
+        client_email: project!.client_email,
+        requested_changes: message,
+        specific_items: revisionItems ? revisionItems.split('\n').filter(Boolean) : [],
+      }).catch(() => {});
       // Notify contractor
       await notifyContractor('changes', message);
       setSubmitted(true);
@@ -304,6 +333,21 @@ export default function ClientPortal() {
       toast.success('Message sent! The contractor will review your feedback.');
     }
     setSubmitting(false);
+  };
+
+  const handleAskQuestion = async () => {
+    if (!project || !question.trim()) return;
+    setSubmittingQ(true);
+    await supabase.from('proposal_questions').insert({
+      project_id: project.id,
+      share_token: shareToken!,
+      client_name: clientQName || project.client_name,
+      client_email: project.client_email,
+      question: question.trim(),
+    });
+    setSubmittingQ(false);
+    setQuestionSent(true);
+    toast.success('Question sent! The contractor will reply shortly.');
   };
 
   if (loading) {
@@ -418,6 +462,52 @@ export default function ClientPortal() {
       </div>
 
       <div className="max-w-4xl mx-auto px-8 py-8 space-y-6">
+        {/* ── Progress Indicator ── */}
+        {!isApproved && !submitted && (
+          <div className="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200 dark:border-navy-800 p-4">
+            <div className="flex items-center justify-between gap-2">
+              {[
+                { step: 1, label: 'Review Proposal', done: true },
+                { step: 2, label: 'Select Option', done: project?.is_multi_option ? !!project?.selected_option_tier : true },
+                { step: 3, label: 'Sign & Approve', done: !!signatureDataUrl },
+              ].map((s, i, arr) => (
+                <div key={s.step} className="flex items-center flex-1">
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${s.done ? 'bg-emerald-500 text-white' : 'bg-slate-200 dark:bg-navy-700 text-slate-500 dark:text-slate-400'}`}>
+                      {s.done ? '✓' : s.step}
+                    </div>
+                    <span className={`text-xs font-medium hidden sm:block ${s.done ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>{s.label}</span>
+                  </div>
+                  {i < arr.length - 1 && <div className={`h-0.5 w-6 flex-shrink-0 mx-1 rounded ${s.done ? 'bg-emerald-400' : 'bg-slate-200 dark:bg-navy-700'}`} />}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Deposit Requests (shown to client) ── */}
+        {deposits.length > 0 && !isApproved && (
+          <div className="bg-white dark:bg-navy-900 rounded-2xl border border-amber-200 dark:border-amber-800/30 p-5">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+              💳 Deposit Required
+            </h3>
+            {deposits.map((d: any) => (
+              <div key={d.id} className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/10 rounded-xl border border-amber-200 dark:border-amber-800/30">
+                <div>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">${Number(d.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  <p className="text-xs text-slate-500">{d.description}</p>
+                </div>
+                {d.payment_link && (
+                  <a href={d.payment_link} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-copper text-white rounded-xl text-sm font-bold hover:bg-copper-hover transition-colors">
+                    Pay Now →
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* ── Already approved banner ── */}
         {isApproved && (
           <div className="bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-250 dark:border-emerald-800/65 rounded-2xl px-6 py-4 flex items-center gap-3">
@@ -704,10 +794,22 @@ export default function ClientPortal() {
                   placeholder={
                     action === 'approve'
                       ? 'Optional: Add a note or reference number for the contractor...'
-                      : 'Describe the modifications or questions you have... (required)'
+                      : 'Describe the changes you need... (required)'
                   }
                   className="w-full px-4 py-3 bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:border-copper focus:ring-1 focus:ring-copper/40 resize-none transition-all"
                 />
+                {action === 'changes' && (
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">Specific line items to change (one per line, optional)</label>
+                    <textarea
+                      value={revisionItems}
+                      onChange={e => setRevisionItems(e.target.value)}
+                      rows={2}
+                      placeholder="e.g. \nLine 3 — Electrical panel: reduce to 150A\nRemove line 7"
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 rounded-xl text-sm text-slate-800 dark:text-slate-100 focus:border-copper focus:ring-1 focus:ring-copper/40 resize-none transition-all"
+                    />
+                  </div>
+                )}
                 <button
                   id="submit-response-btn"
                   onClick={action === 'approve' ? handleApprove : handleRequestChanges}
@@ -728,6 +830,38 @@ export default function ClientPortal() {
             )}
           </div>
         )}
+
+        {/* ── Ask a Question ── */}
+        <div className="bg-white dark:bg-navy-900 rounded-2xl border border-slate-200 dark:border-navy-800 p-5">
+          <button onClick={() => setShowQA(!showQA)} className="w-full flex items-center justify-between">
+            <span className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 text-copper" /> Have a question about this proposal?
+            </span>
+            <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${showQA ? 'rotate-90' : ''}`} />
+          </button>
+          {showQA && (
+            <div className="mt-4 space-y-3 animate-fade-in">
+              {questionSent ? (
+                <div className="text-center py-4">
+                  <CheckCircle className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">Question sent!</p>
+                  <p className="text-xs text-slate-400 mt-1">The contractor will reply to your email shortly.</p>
+                </div>
+              ) : (
+                <>
+                  <input type="text" placeholder="Your name" value={clientQName} onChange={e => setClientQName(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 rounded-xl text-sm focus:border-copper focus:outline-none" />
+                  <textarea rows={3} placeholder="What would you like to know? (e.g. What does line item X include?)" value={question} onChange={e => setQuestion(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-800 rounded-xl text-sm focus:border-copper focus:outline-none resize-none" />
+                  <button onClick={handleAskQuestion} disabled={submittingQ || !question.trim()}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-copper text-white rounded-xl text-sm font-bold hover:bg-copper-hover disabled:opacity-50 transition-colors">
+                    <Send className="w-4 h-4" />{submittingQ ? 'Sending...' : 'Send Question'}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* ── Footer ── */}
         <div className="bg-navy-900 dark:bg-navy-950 border border-navy-800 dark:border-navy-900 rounded-2xl px-6 py-4 text-center transition-colors">

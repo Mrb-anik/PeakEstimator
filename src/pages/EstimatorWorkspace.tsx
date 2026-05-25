@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Share2, ChevronDown, Lock, FileText, CheckCircle2, Shield, Printer, History } from 'lucide-react';
+import { ArrowLeft, Share2, ChevronDown, Lock, FileText, CheckCircle2, Shield, Printer, History, DollarSign, Calendar, Users, BarChart2, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAppStore } from '../store/useAppStore';
 import { useProject } from '../hooks/useProjects';
 import { useProjectItems } from '../hooks/useProjectItems';
 import { calcTotals } from '../lib/calculations';
@@ -17,6 +18,11 @@ import type { Project, StatusType, ProjectItem } from '../types';
 import { TRADE_EMOJIS } from '../types';
 import { supabase } from '../api/supabase';
 import { apiClient } from '../api/apiClient';
+import JobCostingModal from '../components/estimator/JobCostingModal';
+import SchedulePanel from '../components/estimator/SchedulePanel';
+import DepositPanel from '../components/estimator/DepositPanel';
+import SubcontractorPanel from '../components/estimator/SubcontractorPanel';
+import { trackEvent, initTimeTracking } from '../lib/proposalAnalytics';
 
 const STATUSES: StatusType[] = ['lead', 'bidding', 'sent', 'approved', 'won', 'lost'];
 
@@ -32,10 +38,13 @@ const STATUS_LABEL_COLORS: Record<StatusType, string> = {
 export default function EstimatorWorkspace() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const profile = useAppStore(s => s.profile);
   const { project, loading: projLoading, updateProject } = useProject(id);
   const { items, loading: itemsLoading, addItem, updateItem, deleteItem, reorderItems } = useProjectItems(id);
 
   const [priceBookOpen, setPriceBookOpen] = useState(false);
+  const [showJobCosting, setShowJobCosting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'schedule' | 'deposit' | 'subs' | null>(null);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
   const [notes, setNotes] = useState('');
@@ -485,12 +494,19 @@ export default function EstimatorWorkspace() {
     if (!project) return;
     setExportingPDF(true);
     try {
-      generateAndPrint(project, items, totals);
+      // Always inject latest contractor branding from profile into the project snapshot
+      const brandedProject = {
+        ...project,
+        company_name:  profile?.company_name  || project.company_name,
+        company_email: profile?.company_email || project.company_email,
+        company_phone: profile?.company_phone || project.company_phone,
+        company_logo:  profile?.company_logo  || project.company_logo,
+      };
+      generateAndPrint(brandedProject, items, totals);
       toast.success('Print dialog opening…');
     } catch {
       toast.error('Could not open print dialog. Please allow pop-ups.');
     } finally {
-      // Reset spinner after a short delay
       setTimeout(() => setExportingPDF(false), 1500);
     }
   };
@@ -778,6 +794,32 @@ export default function EstimatorWorkspace() {
             project={project}
             onUpdate={handleMarkupUpdate}
           />
+
+          {/* ── New Feature Panels ───────────────────────────── */}
+          <div className="bg-white dark:bg-navy-900 rounded-3xl border border-slate-100 dark:border-navy-800/80 shadow-premium p-5 space-y-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex-1">Project Tools</p>
+              <button onClick={() => setActiveTab(activeTab === 'schedule' ? null : 'schedule')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${activeTab === 'schedule' ? 'bg-copper text-white border-transparent' : 'bg-white dark:bg-navy-900 border-slate-200 dark:border-navy-700 text-slate-600 dark:text-slate-300'}`}>
+                <Calendar className="w-3.5 h-3.5" /> Schedule
+              </button>
+              <button onClick={() => setActiveTab(activeTab === 'deposit' ? null : 'deposit')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${activeTab === 'deposit' ? 'bg-copper text-white border-transparent' : 'bg-white dark:bg-navy-900 border-slate-200 dark:border-navy-700 text-slate-600 dark:text-slate-300'}`}>
+                <DollarSign className="w-3.5 h-3.5" /> Deposits
+              </button>
+              <button onClick={() => setActiveTab(activeTab === 'subs' ? null : 'subs')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${activeTab === 'subs' ? 'bg-copper text-white border-transparent' : 'bg-white dark:bg-navy-900 border-slate-200 dark:border-navy-700 text-slate-600 dark:text-slate-300'}`}>
+                <Users className="w-3.5 h-3.5" /> Subcontractors
+              </button>
+              <button onClick={() => setShowJobCosting(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border bg-white dark:bg-navy-900 border-slate-200 dark:border-navy-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-navy-800 transition-all">
+                <TrendingUp className="w-3.5 h-3.5" /> Job Costing
+              </button>
+            </div>
+            {activeTab === 'schedule' && <SchedulePanel projectId={project.id} />}
+            {activeTab === 'deposit' && <DepositPanel project={project} />}
+            {activeTab === 'subs' && <SubcontractorPanel projectId={project.id} projectName={project.name} />}
+          </div>
         </div>
 
         {/* Totals sidebar — stacks below on mobile, sticky column on desktop */}
@@ -813,6 +855,16 @@ export default function EstimatorWorkspace() {
         onApplyItems={handleApplyTemplateItems}
         projectTrade={project.trade}
       />
+
+      {/* Job Costing Modal */}
+      {showJobCosting && project && (
+        <JobCostingModal
+          project={project}
+          items={items}
+          onClose={() => setShowJobCosting(false)}
+          onSaved={() => {}}
+        />
+      )}
 
       {/* Licensing Agreement Modal */}
       {agreementModalOpen && (
