@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { supabase } from './api/supabase';
 import { useAppStore } from './store/useAppStore';
 
@@ -121,6 +122,7 @@ function App() {
     <BrowserRouter>
       <Toaster position="top-right" richColors closeButton />
       <Analytics />
+      <SpeedInsights />
       <Routes>
         <Route path="/" element={<SmartRoot />} />
         <Route path="/login" element={<Login />} />
