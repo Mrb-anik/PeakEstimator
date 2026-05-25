@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster, toast } from 'sonner';
+import { Analytics } from '@vercel/analytics/react';
 import { supabase } from './api/supabase';
 import { useAppStore } from './store/useAppStore';
 
@@ -135,6 +136,7 @@ function App() {
         <Route path="/support"     element={<ProtectedRoute><AppLayout><SupportDesk /></AppLayout></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Analytics />
     </BrowserRouter>
   );
 }
