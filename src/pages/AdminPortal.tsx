@@ -27,7 +27,7 @@ interface WaitlistItem {
   created_at: string;
 }
 
-type AdminTab = 'members' | 'crm' | 'integrations' | 'support' | 'email_logs' | 'waitlist' | 'feature_flags' | 'ai_settings' | 'automation' | 'templates' | 'audit_logs' | 'revenue' | 'broadcast' | 'churn';
+type AdminTab = 'members' | 'crm' | 'integrations' | 'support' | 'email_logs' | 'waitlist' | 'feature_flags' | 'ai_settings' | 'automation' | 'templates' | 'audit_logs' | 'revenue' | 'broadcast' | 'churn' | 'billing';
 
 export default function AdminPortal() {
   const { triggerEvent } = useEventBus();
@@ -92,6 +92,22 @@ export default function AdminPortal() {
   const [systemSettings, setSystemSettings] = useState<any>(null);
   const [editingFinancing, setEditingFinancing] = useState(false);
   const [finForm, setFinForm] = useState({ rate: '9.99', maxTerm: '120', minAmount: '1000', enabled: true });
+
+  // Billing / Wire Management
+  const [wireForm, setWireForm] = useState({
+    wire_bank_name: '',
+    wire_account_name: '',
+    wire_account_number: '',
+    wire_routing_number: '',
+    wire_swift: '',
+    wire_contact_email: '',
+    wire_instructions: '',
+  });
+  const [wireLoading, setWireLoading] = useState(false);
+  const [savingWire, setSavingWire] = useState(false);
+  const [editingWire, setEditingWire] = useState(false);
+  const [pendingWires, setPendingWires] = useState<any[]>([]);
+  const [approvingWire, setApprovingWire] = useState<string | null>(null);
 
   // Templates
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -205,6 +221,63 @@ export default function AdminPortal() {
       setAiSettingsLoading(false);
     }
   }, []);
+
+  const fetchWireData = useCallback(async () => {
+    setWireLoading(true);
+    try {
+      const [{ data: ss }, { data: pw }] = await Promise.all([
+        supabase.from('system_settings').select('wire_bank_name,wire_account_name,wire_account_number,wire_routing_number,wire_swift,wire_contact_email,wire_instructions').single(),
+        supabase.from('subscriptions').select('*').eq('status', 'pending_wire').order('wire_submitted_at', { ascending: false }),
+      ]);
+      if (ss) setWireForm({
+        wire_bank_name: ss.wire_bank_name || '',
+        wire_account_name: ss.wire_account_name || '',
+        wire_account_number: ss.wire_account_number || '',
+        wire_routing_number: ss.wire_routing_number || '',
+        wire_swift: ss.wire_swift || '',
+        wire_contact_email: ss.wire_contact_email || '',
+        wire_instructions: ss.wire_instructions || '',
+      });
+      if (pw) setPendingWires(pw);
+    } catch (e) { console.warn('fetchWireData error', e); }
+    setWireLoading(false);
+  }, []);
+
+  const handleSaveWire = async () => {
+    setSavingWire(true);
+    try {
+      const { error } = await supabase.from('system_settings')
+        .update({ ...wireForm, updated_at: new Date().toISOString() })
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (error) throw error;
+      setEditingWire(false);
+      toast.success('Wire transfer details updated successfully!');
+    } catch (err: any) {
+      toast.error('Save failed: ' + err.message);
+    }
+    setSavingWire(false);
+  };
+
+  const handleApproveWirePayment = async (sub: any) => {
+    setApprovingWire(sub.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('No session');
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-wire-approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ organization_id: sub.organization_id, plan: sub.plan || 'pro', notify_email: sub.notify_email }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Approval failed');
+      toast.success(`Wire payment approved! Subscription upgraded to ${sub.plan || 'pro'}.`);
+      fetchWireData();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+    setApprovingWire(null);
+  };
 
   const fetchSystemSettings = useCallback(async () => {
     try {
@@ -995,6 +1068,7 @@ Please assign an administrator immediately to prevent collision and address.`,
           <span className="text-[9px] font-bold text-copper/80 uppercase tracking-widest mr-2">Enterprise</span>
           {[
             { id: 'revenue', label: 'Revenue', icon: TrendingUp },
+            { id: 'billing', label: 'Wire & Billing', icon: CreditCard },
             { id: 'feature_flags', label: 'Feature Flags', icon: Flag },
             { id: 'ai_settings', label: 'AI Controls', icon: Bot },
             { id: 'automation', label: 'Automation', icon: Bell },
@@ -1014,6 +1088,7 @@ Please assign an administrator immediately to prevent collision and address.`,
                   if (tab.id === 'feature_flags') fetchFeatureFlags();
                   if (tab.id === 'ai_settings') fetchAiSettings();
                   if (tab.id === 'automation') fetchSystemSettings();
+                  if (tab.id === 'billing') fetchWireData();
                   if (tab.id === 'templates') fetchTemplates();
                   if (tab.id === 'audit_logs') fetchAuditLogs(1);
                 }}
@@ -2452,7 +2527,7 @@ Please assign an administrator immediately to prevent collision and address.`,
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { label: 'Active Seats', value: members.filter(m => !m.is_admin).length, suffix: '', color: 'text-white', bg: 'bg-white dark:bg-navy', icon: Users },
-              { label: 'Est. MRR', value: members.filter(m => !m.is_admin).length * 99, suffix: '$', prefix: '$', color: 'text-emerald-400', bg: 'bg-white dark:bg-navy', icon: DollarSign },
+              { label: 'Active Seats', value: members.filter(m => !m.is_admin).length, suffix: ' seats', color: 'text-emerald-400', bg: 'bg-white dark:bg-navy', icon: DollarSign },
               { label: 'Waitlist', value: waitlist.length, suffix: ' pending', color: 'text-amber-400', bg: 'bg-white dark:bg-navy', icon: UserCheck },
               { label: 'Support Open', value: supportTickets.filter(t => t.status === 'open').length, suffix: '', color: 'text-rose-400', bg: 'bg-white dark:bg-navy', icon: HelpCircle },
             ].map(({ label, value, suffix = '', prefix = '', color, bg, icon: Icon }) => (
@@ -2487,7 +2562,7 @@ Please assign an administrator immediately to prevent collision and address.`,
                       <td className="py-3 pr-4 text-slate-400">{m.email}</td>
                       <td className="py-3 pr-4 text-slate-400">{m.created_at ? new Date(m.created_at).toLocaleDateString() : '—'}</td>
                       <td className="py-3 text-right">
-                        <span className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30 text-[9px] font-black px-2.5 py-1 rounded-xl uppercase">$99/mo</span>
+                        <span className="bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30 text-[9px] font-black px-2.5 py-1 rounded-xl uppercase">Active</span>
                       </td>
                     </tr>
                   ))}
@@ -2532,6 +2607,163 @@ Please assign an administrator immediately to prevent collision and address.`,
             </div>
           </div>
         </div>
+
+      ) : activeTab === 'billing' ? (
+        /* ═══════════════════════════════════════════════════
+           TAB: WIRE & BILLING MANAGEMENT
+        ═══════════════════════════════════════════════════ */
+        <div className="space-y-6">
+          <div>
+            <h2 className="font-sora font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-1">
+              <CreditCard className="w-4 h-4 text-copper" /> Wire Transfer & Billing Settings
+            </h2>
+            <p className="text-[11px] text-slate-400 mb-5">Manage the bank wire details shown to contractors on their Settings page. Changes reflect immediately for all users.</p>
+          </div>
+
+          {/* Wire Details Editor */}
+          <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 rounded-2xl shadow-card overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-app-border dark:border-navy-800">
+              <div>
+                <h3 className="font-sora font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-copper" /> Bank Wire Details
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">These are the banking credentials displayed on the contractor Settings page.</p>
+              </div>
+              <button
+                onClick={() => { if (!editingWire) fetchWireData(); setEditingWire(!editingWire); }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-xl font-bold text-xs transition-all ${editingWire ? 'bg-rose-50 border-rose-200 text-rose-500 dark:bg-rose-950/20 dark:border-rose-800 dark:text-rose-400' : 'border-slate-200 dark:border-navy-800 hover:border-copper text-slate-500 dark:text-slate-400 hover:text-copper'}`}
+              >
+                {editingWire ? <X className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
+                {editingWire ? 'Cancel' : 'Edit Details'}
+              </button>
+            </div>
+
+            {wireLoading ? (
+              <div className="p-8 flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-copper border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : editingWire ? (
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { label: 'Bank Name', field: 'wire_bank_name', placeholder: 'e.g. Chase Business Banking' },
+                    { label: 'Account Name', field: 'wire_account_name', placeholder: 'e.g. PeakEstimator LLC' },
+                    { label: 'Account Number', field: 'wire_account_number', placeholder: 'e.g. XXXX-XXXX-4892' },
+                    { label: 'Routing Number (ABA)', field: 'wire_routing_number', placeholder: 'e.g. 021000021' },
+                    { label: 'SWIFT / BIC Code', field: 'wire_swift', placeholder: 'e.g. CHASUS33' },
+                    { label: 'Billing Contact Email', field: 'wire_contact_email', placeholder: 'e.g. billing@peakestimator.com' },
+                  ].map(({ label, field, placeholder }) => (
+                    <div key={field}>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">{label}</label>
+                      <input
+                        type="text"
+                        value={wireForm[field as keyof typeof wireForm]}
+                        onChange={e => setWireForm(p => ({ ...p, [field]: e.target.value }))}
+                        placeholder={placeholder}
+                        className="w-full px-3 py-2.5 bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-850 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-copper transition-colors"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Wire Instructions (shown to contractors)</label>
+                  <textarea
+                    value={wireForm.wire_instructions}
+                    onChange={e => setWireForm(p => ({ ...p, wire_instructions: e.target.value }))}
+                    rows={3}
+                    placeholder="e.g. International transfers: include SWIFT code. Processing takes 1–3 business days..."
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-850 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-copper resize-none transition-colors"
+                  />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleSaveWire}
+                    disabled={savingWire}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-copper hover:bg-copper-hover text-white rounded-xl text-sm font-bold disabled:opacity-50 transition-all shadow-md"
+                  >
+                    {savingWire ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="w-4 h-4" />}
+                    {savingWire ? 'Saving...' : 'Save Wire Details'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-navy-900">
+                {[
+                  { label: 'Bank Name', value: wireForm.wire_bank_name },
+                  { label: 'Account Name', value: wireForm.wire_account_name },
+                  { label: 'Account Number', value: wireForm.wire_account_number },
+                  { label: 'Routing Number', value: wireForm.wire_routing_number },
+                  { label: 'SWIFT / BIC', value: wireForm.wire_swift },
+                  { label: 'Contact Email', value: wireForm.wire_contact_email },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex items-center justify-between px-6 py-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 w-40">{label}</span>
+                    <span className="text-sm font-mono font-semibold text-slate-900 dark:text-white flex-1">
+                      {value || <span className="text-slate-400 italic font-normal font-inter">Not set</span>}
+                    </span>
+                  </div>
+                ))}
+                {wireForm.wire_instructions && (
+                  <div className="px-6 py-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Instructions</span>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{wireForm.wire_instructions}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Pending Wire Approvals */}
+          <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 rounded-2xl shadow-card overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-app-border dark:border-navy-800">
+              <div>
+                <h3 className="font-sora font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-500" /> Pending Wire Approvals
+                  {pendingWires.length > 0 && (
+                    <span className="bg-amber-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full">{pendingWires.length}</span>
+                  )}
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">Contractors who submitted wire references waiting for manual activation.</p>
+              </div>
+              <button onClick={fetchWireData} className="p-2 hover:bg-slate-100 dark:hover:bg-navy-950 rounded-xl transition-all text-slate-400 hover:text-copper">
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
+
+            {pendingWires.length === 0 ? (
+              <div className="p-8 text-center">
+                <Check className="w-8 h-8 text-emerald-400 mx-auto mb-2 opacity-50" />
+                <p className="text-sm text-slate-400">No pending wire approvals.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-navy-900">
+                {pendingWires.map(sub => (
+                  <div key={sub.id} className="flex flex-col sm:flex-row sm:items-center gap-4 px-6 py-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">{sub.organization_id || 'Unknown Org'}</span>
+                        <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[9px] font-black px-2 py-0.5 rounded uppercase">{sub.plan || 'pro'}</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 font-mono">Ref: {sub.wire_reference || '—'}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Submitted: {sub.wire_submitted_at ? new Date(sub.wire_submitted_at).toLocaleString() : '—'}</p>
+                    </div>
+                    <button
+                      onClick={() => handleApproveWirePayment(sub)}
+                      disabled={approvingWire === sub.id}
+                      className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white font-bold text-xs rounded-xl transition-all disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {approvingWire === sub.id
+                        ? <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                        : <Check className="w-3 h-3" />}
+                      {approvingWire === sub.id ? 'Approving...' : 'Approve & Activate'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
 
       ) : null
       }
