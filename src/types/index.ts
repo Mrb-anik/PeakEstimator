@@ -4,6 +4,7 @@ export type CategoryType = 'material' | 'labor' | 'equipment' | 'other';
 export type UserRole = 'super_admin' | 'admin' | 'sales_manager' | 'estimator' | 'technician' | 'viewer';
 export type OptionTier = 'base' | 'good' | 'better' | 'best' | 'upsell';
 export type BillingTier = 'free' | 'pro' | 'enterprise';
+export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'pending_wire' | 'trialing' | 'suspended';
 
 export interface Profile {
   id: string;
@@ -18,6 +19,10 @@ export interface Profile {
   default_equipment_markup: number;
   default_tax_rate: number;
   is_admin?: boolean;
+  is_suspended?: boolean;
+  role?: UserRole;
+  billing_tier?: BillingTier;
+  last_login_at?: string | null;
   onboarding_completed: boolean;
   onboarding_dismissed?: boolean;
   onboarding_step: number;
@@ -114,7 +119,6 @@ export interface EmailLog {
   created_at: string;
 }
 
-
 export interface Project {
   id: string;
   user_id: string;
@@ -148,6 +152,8 @@ export interface Project {
   is_multi_option?: boolean;
   selected_option_tier?: 'good' | 'better' | 'best' | null;
   organization_id?: string;
+  is_expired?: boolean;
+  expiry_notified_at?: string | null;
   // Job costing actuals
   job_completed_at?: string | null;
   actual_total?: number | null;
@@ -172,10 +178,8 @@ export interface ProjectItem {
   total: number;
   sort_order: number;
   from_price_book: boolean;
-  // Multi-option tier (additive — null/undefined = base)
   option_tier?: OptionTier;
   is_selected?: boolean;
-  // Job costing actuals
   actual_cost?: number | null;
   actual_quantity?: number | null;
   actual_notes?: string | null;
@@ -282,14 +286,22 @@ export interface BackgroundJob {
   updated_at: string;
 }
 
+// ─── FIXED: Subscription interface — fully in sync with DB ────────
 export interface Subscription {
   id: string;
   organization_id: string;
   stripe_subscription_id?: string;
-  status: 'active' | 'past_due' | 'canceled';
+  status: SubscriptionStatus;
+  plan?: BillingTier;
   price_id?: string;
   current_period_end?: string;
+  wire_reference?: string;
+  wire_submitted_at?: string;
+  notify_email?: string;
+  trial_ends_at?: string;
+  canceled_at?: string;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface FeatureFlag {
@@ -315,7 +327,6 @@ export interface AIUsageLimit {
   updated_at: string;
 }
 
-
 export interface PriceBookItem {
   id: string;
   user_id: string | null;
@@ -328,6 +339,8 @@ export interface PriceBookItem {
   default_markup: number;
   tags: string;
   is_global: boolean;
+  admin_approved?: boolean;
+  organization_id?: string;
   created_at?: string;
 }
 
@@ -369,8 +382,7 @@ export const CATEGORY_COLORS: Record<CategoryType, string> = {
   other: 'category-other',
 };
 
-// ─── New Feature Types ─────────────────────────────────────────────
-
+// ─── Wire & System Settings ────────────────────────────────────────
 export interface WireDetails {
   wire_bank_name: string;
   wire_account_name: string;
@@ -421,46 +433,6 @@ export interface DepositRequest {
   updated_at: string;
 }
 
-export interface ProposalAnalytic {
-  id: string;
-  project_id: string;
-  share_token: string;
-  event_type: 'viewed' | 'section_viewed' | 'tier_hovered' | 'time_spent' | 'link_opened';
-  metadata: Record<string, any>;
-  session_id?: string;
-  ip_hash?: string;
-  device_type?: 'mobile' | 'desktop' | 'tablet';
-  created_at: string;
-}
-
-export interface ProposalQuestion {
-  id: string;
-  project_id: string;
-  share_token: string;
-  client_name?: string;
-  client_email?: string;
-  question: string;
-  answer?: string;
-  answered_at?: string;
-  answered_by?: string;
-  is_public: boolean;
-  created_at: string;
-}
-
-export interface RevisionRequest {
-  id: string;
-  project_id: string;
-  share_token: string;
-  client_name?: string;
-  client_email?: string;
-  requested_changes: string;
-  specific_items: any[];
-  status: 'pending' | 'in_review' | 'revised' | 'closed';
-  contractor_notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface MaintenanceContract {
   id: string;
   user_id: string;
@@ -501,21 +473,67 @@ export interface SubcontractorBid {
   notes?: string;
   status: 'invited' | 'viewed' | 'bid_submitted' | 'accepted' | 'rejected';
   bid_token: string;
-  invite_sent_at: string;
+  invite_sent_at?: string;
   bid_submitted_at?: string;
   accepted_at?: string;
+  created_at: string;
+}
+
+export interface ProposalAnalytics {
+  id: string;
+  project_id: string;
+  share_token: string;
+  event_type: 'viewed' | 'section_viewed' | 'tier_hovered' | 'time_spent' | 'link_opened';
+  metadata: Record<string, any>;
+  session_id?: string;
+  ip_hash?: string;
+  device_type?: 'mobile' | 'desktop' | 'tablet';
+  created_at: string;
+}
+
+export interface ChangeOrder {
+  id: string;
+  project_id: string;
+  user_id: string;
+  version_number: number;
+  title: string;
+  description?: string;
+  items_snapshot: any[];
+  original_total: number;
+  revised_total: number;
+  delta_amount: number;
+  status: 'draft' | 'sent' | 'client_signed' | 'rejected' | 'voided';
+  share_token: string;
+  client_signed_at?: string;
+  signature_data?: string;
+  contractor_notes?: string;
   created_at: string;
   updated_at: string;
 }
 
-export interface BroadcastEmail {
+export interface LienWaiver {
   id: string;
-  sent_by?: string;
-  subject: string;
-  body: string;
-  target_tier?: 'all' | 'free' | 'pro' | 'enterprise';
-  recipient_count: number;
-  status: 'draft' | 'sent' | 'failed';
-  sent_at?: string;
+  project_id: string;
+  user_id: string;
+  waiver_type: 'conditional' | 'unconditional' | 'partial';
+  amount: number;
+  through_date?: string;
+  client_name?: string;
+  client_address?: string;
+  property_address?: string;
+  status: 'draft' | 'sent' | 'signed' | 'voided';
+  share_token: string;
+  signed_at?: string;
+  signature_data?: string;
+  pdf_url?: string;
+  created_at: string;
+}
+
+export interface AdminActionsLog {
+  id: string;
+  admin_id: string;
+  action_type: string;
+  target_id?: string;
+  metadata: Record<string, any>;
   created_at: string;
 }

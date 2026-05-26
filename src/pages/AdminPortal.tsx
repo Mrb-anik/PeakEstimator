@@ -27,7 +27,7 @@ interface WaitlistItem {
   created_at: string;
 }
 
-type AdminTab = 'members' | 'crm' | 'integrations' | 'support' | 'email_logs' | 'waitlist' | 'feature_flags' | 'ai_settings' | 'automation' | 'templates' | 'audit_logs' | 'revenue' | 'broadcast' | 'churn' | 'billing';
+type AdminTab = 'members' | 'crm' | 'integrations' | 'support' | 'email_logs' | 'waitlist' | 'feature_flags' | 'ai_settings' | 'automation' | 'templates' | 'audit_logs' | 'revenue' | 'broadcast' | 'churn' | 'billing' | 'stripe' | 'pricebook_admin';
 
 export default function AdminPortal() {
   const { triggerEvent } = useEventBus();
@@ -108,6 +108,26 @@ export default function AdminPortal() {
   const [editingWire, setEditingWire] = useState(false);
   const [pendingWires, setPendingWires] = useState<any[]>([]);
   const [approvingWire, setApprovingWire] = useState<string | null>(null);
+  // NEW: Member management expanded state
+  const [editingMember, setEditingMember] = useState<Profile | null>(null);
+  const [memberRoleUpdate, setMemberRoleUpdate] = useState<string>('estimator');
+  const [memberPlanUpdate, setMemberPlanUpdate] = useState<string>('pro');
+  const [savingMember, setSavingMember] = useState(false);
+  
+  // NEW: Subscriptions / Stripe admin
+  const [allSubscriptions, setAllSubscriptions] = useState<any[]>([]);
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
+  
+  // NEW: Churn detection (real)
+  const [churnStats, setChurnStats] = useState<any[]>([]);
+  
+  // NEW: Global price book admin
+  const [globalPriceBook, setGlobalPriceBook] = useState<any[]>([]);
+  const [priceBookLoading, setPriceBookLoading] = useState(false);
+  
+  // NEW: Password reset state
+  const [sendingPasswordReset, setSendingPasswordReset] = useState<string | null>(null);
+
 
   // Templates
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -982,6 +1002,152 @@ Please assign an administrator immediately to prevent collision and address.`,
     }
   ];
 
+
+  // ── NEW: Update member role/plan/suspend ────────────────────────
+  const handleUpdateMember = async () => {
+    if (!editingMember) return;
+    setSavingMember(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          role: memberRoleUpdate,
+          billing_tier: memberPlanUpdate,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingMember.id);
+      if (error) throw error;
+      toast.success('Member updated successfully');
+      setEditingMember(null);
+      fetchData();
+    } catch (err: any) {
+      toast.error('Update failed: ' + err.message);
+    }
+    setSavingMember(false);
+  };
+
+  const handleSuspendMember = async (member: Profile) => {
+    const action = member.is_suspended ? 'reactivate' : 'suspend';
+    if (!confirm(`${action === 'suspend' ? 'Suspend' : 'Reactivate'} ${member.email}?`)) return;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_suspended: !member.is_suspended, updated_at: new Date().toISOString() })
+        .eq('id', member.id);
+      if (error) throw error;
+      toast.success(`Member ${action === 'suspend' ? 'suspended' : 'reactivated'}`);
+      fetchData();
+    } catch (err: any) {
+      toast.error('Action failed: ' + err.message);
+    }
+  };
+
+  const handlePasswordReset = async (email: string, userId: string) => {
+    setSendingPasswordReset(userId);
+    try {
+      const { error } = await supabase.auth.admin.generateLink({
+        type: 'recovery',
+        email
+      });
+      if (error) {
+        // Fallback: use resetPasswordForEmail
+        const { error: e2 } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/forgot-password`
+        });
+        if (e2) throw e2;
+      }
+      // Log the action
+      await supabase.from('admin_actions_log').insert({
+        action_type: 'password_reset_sent',
+        target_id: userId,
+        metadata: { email }
+      }).select();
+      toast.success(`Password reset email sent to ${email}`);
+    } catch (err: any) {
+      toast.error('Failed: ' + err.message);
+    }
+    setSendingPasswordReset(null);
+  };
+
+  const fetchAllSubscriptions = async () => {
+    setSubscriptionsLoading(true);
+    try {
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (data) setAllSubscriptions(data);
+    } catch (e) { console.error(e); }
+    setSubscriptionsLoading(false);
+  };
+
+  const handleManualActivateSub = async (subId: string) => {
+    if (!confirm('Manually mark this subscription as active?')) return;
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({ status: 'active', updated_at: new Date().toISOString() })
+        .eq('id', subId);
+      if (error) throw error;
+      toast.success('Subscription manually activated');
+      fetchAllSubscriptions();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleCancelSub = async (subId: string) => {
+    if (!confirm('Cancel this subscription? This cannot be undone.')) return;
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({ status: 'canceled', canceled_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .eq('id', subId);
+      if (error) throw error;
+      toast.success('Subscription cancelled');
+      fetchAllSubscriptions();
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
+  const computeChurnStats = (memberList: Profile[]) => {
+    const now = new Date();
+    return memberList
+      .filter(m => !m.is_admin)
+      .map(m => {
+        const lastLogin = m.last_login_at ? new Date(m.last_login_at) : null;
+        const created = m.created_at ? new Date(m.created_at) : null;
+        const daysSinceLogin = lastLogin 
+          ? Math.floor((now.getTime() - lastLogin.getTime()) / (1000 * 60 * 60 * 24))
+          : null;
+        const daysSinceSignup = created
+          ? Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24))
+          : 0;
+        const riskScore = daysSinceLogin === null 
+          ? 90  // Never logged in since we added tracking = unknown risk
+          : daysSinceLogin > 30 ? 85
+          : daysSinceLogin > 14 ? 60
+          : daysSinceLogin > 7 ? 30
+          : 10;
+        const riskLevel = riskScore >= 80 ? 'critical' : riskScore >= 55 ? 'high' : riskScore >= 25 ? 'medium' : 'low';
+        return { ...m, daysSinceLogin, daysSinceSignup, riskScore, riskLevel };
+      })
+      .sort((a, b) => b.riskScore - a.riskScore);
+  };
+
+  const fetchGlobalPriceBook = async () => {
+    setPriceBookLoading(true);
+    try {
+      const { data } = await supabase
+        .from('price_book_items')
+        .select('*')
+        .order('trade', { ascending: true });
+      if (data) setGlobalPriceBook(data);
+    } catch (e) { console.error(e); }
+    setPriceBookLoading(false);
+  };
+
   // Filtering lists based on search string
   const filteredMembers = members.filter(m =>
     m.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -1076,6 +1242,8 @@ Please assign an administrator immediately to prevent collision and address.`,
             { id: 'audit_logs', label: 'Audit Logs', icon: ScrollText },
             { id: 'integrations', label: 'Integration Desk', icon: Zap },
             { id: 'churn', label: 'Churn Risk', icon: Activity },
+            { id: 'stripe', label: 'Subscriptions', icon: CreditCard },
+            { id: 'pricebook_admin', label: 'Price Book Admin', icon: Package },
           ].map(tab => {
             const Icon = tab.icon;
             return (
@@ -1126,58 +1294,164 @@ Please assign an administrator immediately to prevent collision and address.`,
           <div className="w-8 h-8 border-4 border-copper border-t-transparent rounded-full animate-spin" />
         </div>
       ) : activeTab === 'members' ? (
-        /* TAB 1: MEMBERS */
-        <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto scrollbar-thin">
-            <table className="w-full text-left border-collapse min-w-[850px]">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-navy-950 border-b border-app-border dark:border-navy-800 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                  <th className="py-4 px-6">Member / Company</th>
-                  <th className="py-4 px-6">Email Address</th>
-                  <th className="py-4 px-6">Access Role</th>
-                  <th className="py-4 px-6">Seat Registration</th>
-                  <th className="py-4 px-6 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-app-border dark:divide-navy-800 text-xs text-slate-900 dark:text-white">
-                {filteredMembers.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-16 text-center text-slate-400">No active contractor seats.</td>
+        /* TAB 1: MEMBERS — Full Admin Control */
+        <div className="space-y-4">
+          {/* Edit Member Modal */}
+          {editingMember && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+              <div className="bg-white dark:bg-navy rounded-2xl shadow-2xl border border-app-border dark:border-navy-700 w-full max-w-md p-6 space-y-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-sora font-extrabold text-sm text-slate-900 dark:text-white">Edit Member</h3>
+                  <button onClick={() => setEditingMember(null)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-navy-800 transition-colors">
+                    <X className="w-4 h-4 text-slate-400" />
+                  </button>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{editingMember.email} — {editingMember.company_name}</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Role</label>
+                      <select
+                        value={memberRoleUpdate}
+                        onChange={e => setMemberRoleUpdate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-navy-700 bg-slate-50 dark:bg-navy-900 text-xs text-slate-900 dark:text-white focus:outline-none"
+                      >
+                        <option value="estimator">Estimator</option>
+                        <option value="sales_manager">Sales Manager</option>
+                        <option value="technician">Technician</option>
+                        <option value="viewer">Viewer</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Plan Tier</label>
+                      <select
+                        value={memberPlanUpdate}
+                        onChange={e => setMemberPlanUpdate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-navy-700 bg-slate-50 dark:bg-navy-900 text-xs text-slate-900 dark:text-white focus:outline-none"
+                      >
+                        <option value="free">Free</option>
+                        <option value="pro">Pro ($99/mo)</option>
+                        <option value="enterprise">Enterprise ($199/mo)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={handleUpdateMember}
+                    disabled={savingMember}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-copper text-white text-xs font-bold hover:opacity-90 transition-all disabled:opacity-50"
+                  >
+                    {savingMember ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                    Save Changes
+                  </button>
+                  <button onClick={() => setEditingMember(null)} className="px-4 py-2 rounded-xl border border-slate-200 dark:border-navy-700 text-xs font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-navy-800 transition-all">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto scrollbar-thin">
+              <table className="w-full text-left border-collapse min-w-[950px]">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-navy-950 border-b border-app-border dark:border-navy-800 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th className="py-4 px-5">Member / Company</th>
+                    <th className="py-4 px-5">Email</th>
+                    <th className="py-4 px-5">Role</th>
+                    <th className="py-4 px-5">Plan</th>
+                    <th className="py-4 px-5">Last Login</th>
+                    <th className="py-4 px-5">Status</th>
+                    <th className="py-4 px-5 text-right">Actions</th>
                   </tr>
-                ) : (
-                  filteredMembers.map(m => (
-                    <tr key={m.id} className="hover:bg-slate-50/50 dark:hover:bg-navy-950/40">
-                      <td className="py-4 px-6">
-                        <div className="font-bold">{m.full_name || '—'}</div>
-                        <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                          <Building2 className="w-3.5 h-3.5" /> {m.company_name || 'No Branding Profile'}
-                        </div>
-                      </td>
-                      <td className="py-4 px-6 font-bold">{m.email}</td>
-                      <td className="py-4 px-6">
-                        {m.is_admin ? (
-                          <span className="bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 px-2 py-0.5 border border-rose-100 dark:border-rose-900/30 rounded text-[9px] font-bold uppercase">Superadmin</span>
-                        ) : (
-                          <span className="bg-slate-100 text-slate-500 dark:bg-navy-950 dark:text-slate-400 px-2 py-0.5 border border-slate-200 dark:border-navy-850 rounded text-[9px] font-bold uppercase">Contractor Seat</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-6 text-slate-400 font-semibold">{new Date(m.created_at || '').toLocaleDateString()}</td>
-                      <td className="py-4 px-6 text-right">
-                        {!m.is_admin && (
-                          <button
-                            onClick={() => handleRevokeAccess(m.id, m.email)}
-                            className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-500 rounded-lg transition-all"
-                            title="Revoke access seat"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </td>
+                </thead>
+                <tbody className="divide-y divide-app-border dark:divide-navy-800 text-xs text-slate-900 dark:text-white">
+                  {filteredMembers.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-16 text-center text-slate-400">No active contractor seats.</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredMembers.map(m => (
+                      <tr key={m.id} className={`hover:bg-slate-50/50 dark:hover:bg-navy-950/40 ${m.is_suspended ? 'opacity-50' : ''}`}>
+                        <td className="py-3.5 px-5">
+                          <div className="font-bold">{m.full_name || '—'}</div>
+                          <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <Building2 className="w-3 h-3" /> {m.company_name || 'No Company'}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-5 text-slate-600 dark:text-slate-300">{m.email}</td>
+                        <td className="py-3.5 px-5">
+                          {m.is_admin ? (
+                            <span className="bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 px-2 py-0.5 border border-rose-100 dark:border-rose-900/30 rounded text-[9px] font-bold uppercase">Superadmin</span>
+                          ) : (
+                            <span className="bg-slate-100 text-slate-600 dark:bg-navy-900 dark:text-slate-300 px-2 py-0.5 rounded text-[9px] font-bold uppercase">{m.role || 'estimator'}</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-5">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                            m.billing_tier === 'enterprise' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                            m.billing_tier === 'pro' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                            'bg-slate-100 text-slate-500 dark:bg-navy-900 dark:text-slate-400'
+                          }`}>{m.billing_tier || 'pro'}</span>
+                        </td>
+                        <td className="py-3.5 px-5 text-slate-400">
+                          {m.last_login_at 
+                            ? new Date(m.last_login_at).toLocaleDateString() 
+                            : <span className="text-amber-500 text-[10px]">Never tracked</span>}
+                        </td>
+                        <td className="py-3.5 px-5">
+                          {m.is_suspended ? (
+                            <span className="bg-red-100 text-red-600 dark:bg-red-950/20 dark:text-red-400 px-2 py-0.5 rounded text-[9px] font-bold uppercase">Suspended</span>
+                          ) : (
+                            <span className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 px-2 py-0.5 rounded text-[9px] font-bold uppercase">Active</span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-5 text-right">
+                          <div className="flex items-center gap-1 justify-end">
+                            {!m.is_admin && (
+                              <>
+                                <button
+                                  onClick={() => { setEditingMember(m); setMemberRoleUpdate(m.role || 'estimator'); setMemberPlanUpdate(m.billing_tier || 'pro'); }}
+                                  className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-slate-400 hover:text-blue-500 rounded-lg transition-all"
+                                  title="Edit role & plan"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handlePasswordReset(m.email, m.id)}
+                                  disabled={sendingPasswordReset === m.id}
+                                  className="p-1.5 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-slate-400 hover:text-amber-500 rounded-lg transition-all"
+                                  title="Send password reset"
+                                >
+                                  {sendingPasswordReset === m.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                                </button>
+                                <button
+                                  onClick={() => handleSuspendMember(m)}
+                                  className={`p-1.5 rounded-lg transition-all ${m.is_suspended ? 'hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-slate-400 hover:text-emerald-500' : 'hover:bg-orange-50 dark:hover:bg-orange-950/30 text-slate-400 hover:text-orange-500'}`}
+                                  title={m.is_suspended ? 'Reactivate member' : 'Suspend member'}
+                                >
+                                  {m.is_suspended ? <CircleCheck className="w-3.5 h-3.5" /> : <CircleX className="w-3.5 h-3.5" />}
+                                </button>
+                                <button
+                                  onClick={() => handleRevokeAccess(m.id, m.email)}
+                                  className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-500 rounded-lg transition-all"
+                                  title="Permanently delete member"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       ) : activeTab === 'crm' ? (
@@ -2580,35 +2854,230 @@ Please assign an administrator immediately to prevent collision and address.`,
 
       ) : activeTab === 'churn' ? (
         /* ═══════════════════════════════════════════════════
-           CHURN RISK MONITOR
+           CHURN RISK MONITOR — REAL DATA
         ═══════════════════════════════════════════════════ */
-        <div className="space-y-6">
-          <div>
-            <h2 className="font-sora font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-1">
-              <Activity className="w-4 h-4 text-rose-400" /> Churn Risk Monitor
-            </h2>
-            <p className="text-[11px] text-slate-400 mb-5">Contractors who haven't logged in for 14+ days or have no proposals in 30 days are flagged here.</p>
-          </div>
-          <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 rounded-2xl p-6 shadow-card">
-            <div className="flex items-center gap-3 py-8 justify-center flex-col text-center">
-              <Activity className="w-8 h-8 text-slate-300 dark:text-slate-700" />
-              <p className="text-sm text-slate-400 max-w-xs">Churn risk scoring uses last_login_at and proposal activity. Connect your analytics events table to populate this view automatically.</p>
-              <div className="mt-4 space-y-3 w-full max-w-md text-left">
-                {members.filter(m => !m.is_admin).slice(0, 5).map(m => (
-                  <div key={m.id} className="flex items-center justify-between px-4 py-3 bg-amber-50 dark:bg-amber-950/10 border border-amber-200 dark:border-amber-900/30 rounded-xl">
-                    <div>
-                      <div className="text-xs font-bold text-slate-900 dark:text-white">{m.company_name || m.email}</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">Last active: unknown — needs analytics hook</div>
+        (() => {
+          const churnData = computeChurnStats(members);
+          const critical = churnData.filter(m => m.riskLevel === 'critical');
+          const high = churnData.filter(m => m.riskLevel === 'high');
+          const medium = churnData.filter(m => m.riskLevel === 'medium');
+          const healthy = churnData.filter(m => m.riskLevel === 'low');
+          return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="font-sora font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-1">
+                <Activity className="w-4 h-4 text-rose-400" /> Churn Risk Monitor
+              </h2>
+              <p className="text-[11px] text-slate-400 mb-5">Real-time analysis based on last_login_at tracking. Members who haven't logged in recently are scored for churn risk.</p>
+            </div>
+            {/* Stats row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[
+                { label: 'Critical Risk', count: critical.length, color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-950/10 border-red-200 dark:border-red-900/30' },
+                { label: 'High Risk', count: high.length, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/10 border-amber-200 dark:border-amber-900/30' },
+                { label: 'Medium Risk', count: medium.length, color: 'text-yellow-500', bg: 'bg-yellow-50 dark:bg-yellow-950/10 border-yellow-200 dark:border-yellow-900/30' },
+                { label: 'Healthy', count: healthy.length, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-900/30' },
+              ].map(s => (
+                <div key={s.label} className={`rounded-2xl border px-4 py-4 ${s.bg}`}>
+                  <div className={`text-2xl font-sora font-extrabold ${s.color}`}>{s.count}</div>
+                  <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 rounded-2xl shadow-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-app-border dark:border-navy-800 bg-slate-50 dark:bg-navy-950/25">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">All Members — Risk Ranking</span>
+              </div>
+              <div className="divide-y divide-app-border dark:divide-navy-800">
+                {churnData.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-xs">No members to analyze.</div>
+                ) : churnData.map(m => (
+                  <div key={m.id} className="flex items-center justify-between px-5 py-3 hover:bg-slate-50/30 dark:hover:bg-navy-950/20">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{m.company_name || m.full_name || m.email}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        {m.last_login_at 
+                          ? `Last login: ${m.daysSinceLogin}d ago (${new Date(m.last_login_at).toLocaleDateString()})` 
+                          : 'Last login: not yet tracked — login tracking now active'}
+                      </div>
                     </div>
-                    <span className="text-[9px] font-black text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded-lg uppercase">At Risk</span>
+                    <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+                      <div className="text-right">
+                        <div className={`text-xs font-black ${
+                          m.riskLevel === 'critical' ? 'text-red-500' :
+                          m.riskLevel === 'high' ? 'text-amber-500' :
+                          m.riskLevel === 'medium' ? 'text-yellow-500' : 'text-emerald-500'
+                        }`}>{m.riskScore}%</div>
+                        <div className="text-[9px] text-slate-400">risk</div>
+                      </div>
+                      <span className={`text-[9px] font-black px-2 py-1 rounded-lg uppercase ${
+                        m.riskLevel === 'critical' ? 'bg-red-100 text-red-600 dark:bg-red-950/30 dark:text-red-400' :
+                        m.riskLevel === 'high' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' :
+                        m.riskLevel === 'medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400' :
+                        'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400'
+                      }`}>{m.riskLevel}</span>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
+          );
+        })()
+
+      ) : activeTab === 'stripe' ? (
+        /* ═══════════════════════════════════════════════════
+           STRIPE / SUBSCRIPTION ADMIN PANEL
+        ═══════════════════════════════════════════════════ */
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-sora font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-1">
+                <CreditCard className="w-4 h-4 text-violet-400" /> Subscription & Payments Manager
+              </h2>
+              <p className="text-[11px] text-slate-400">View, activate, cancel subscriptions. Manual overrides for wire payment failures.</p>
+            </div>
+            <button
+              onClick={fetchAllSubscriptions}
+              disabled={subscriptionsLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-navy-700 text-xs font-bold text-slate-500 dark:text-slate-400 hover:border-copper hover:text-copper transition-all"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${subscriptionsLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+          <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 rounded-2xl shadow-card overflow-hidden">
+            <div className="overflow-x-auto scrollbar-thin">
+              <table className="w-full text-left border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-navy-950 border-b border-app-border text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-4 px-5">Org ID</th>
+                    <th className="py-4 px-5">Plan</th>
+                    <th className="py-4 px-5">Status</th>
+                    <th className="py-4 px-5">Wire Ref</th>
+                    <th className="py-4 px-5">Created</th>
+                    <th className="py-4 px-5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-app-border dark:divide-navy-800 text-xs">
+                  {allSubscriptions.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center">
+                        <button onClick={fetchAllSubscriptions} className="text-copper hover:underline text-xs">Load subscriptions</button>
+                      </td>
+                    </tr>
+                  ) : allSubscriptions.map(sub => (
+                    <tr key={sub.id} className="hover:bg-slate-50/40 dark:hover:bg-navy-950/30">
+                      <td className="py-3 px-5 font-mono text-[10px] text-slate-500">{(sub.organization_id || 'N/A').slice(0,8)}...</td>
+                      <td className="py-3 px-5">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                          sub.plan === 'enterprise' ? 'bg-amber-100 text-amber-700' :
+                          sub.plan === 'pro' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'
+                        }`}>{sub.plan || 'pro'}</span>
+                      </td>
+                      <td className="py-3 px-5">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                          sub.status === 'active' ? 'bg-emerald-100 text-emerald-700' :
+                          sub.status === 'pending_wire' ? 'bg-amber-100 text-amber-700' :
+                          sub.status === 'canceled' ? 'bg-red-100 text-red-600' :
+                          'bg-slate-100 text-slate-500'
+                        }`}>{sub.status}</span>
+                      </td>
+                      <td className="py-3 px-5 font-mono text-[10px] text-slate-400">{sub.wire_reference || '—'}</td>
+                      <td className="py-3 px-5 text-slate-400">{sub.created_at ? new Date(sub.created_at).toLocaleDateString() : '—'}</td>
+                      <td className="py-3 px-5 text-right">
+                        <div className="flex gap-1 justify-end">
+                          {sub.status !== 'active' && (
+                            <button
+                              onClick={() => handleManualActivateSub(sub.id)}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold hover:bg-emerald-500/20 transition-all"
+                            >
+                              Activate
+                            </button>
+                          )}
+                          {sub.status !== 'canceled' && (
+                            <button
+                              onClick={() => handleCancelSub(sub.id)}
+                              className="px-2.5 py-1 rounded-lg bg-red-500/10 text-red-500 text-[10px] font-bold hover:bg-red-500/20 transition-all"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/10 border border-amber-200 dark:border-amber-900/30 rounded-xl text-xs text-amber-700 dark:text-amber-400">
+            <strong>Note:</strong> For Stripe refunds, cancellations, and invoice management, visit the <a href="https://dashboard.stripe.com" target="_blank" rel="noopener noreferrer" className="underline">Stripe Dashboard</a> directly. STRIPE_SECRET_KEY must be set in Supabase Edge Function secrets.
+          </div>
         </div>
 
-      ) : activeTab === 'billing' ? (
+      ) : activeTab === 'pricebook_admin' ? (
+        /* ═══════════════════════════════════════════════════
+           GLOBAL PRICE BOOK ADMIN
+        ═══════════════════════════════════════════════════ */
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-sora font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-1">
+                <Package className="w-4 h-4 text-copper" /> Global Price Book Admin
+              </h2>
+              <p className="text-[11px] text-slate-400">View all price book items across all contractors. Approve or manage global items.</p>
+            </div>
+            <button
+              onClick={fetchGlobalPriceBook}
+              disabled={priceBookLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-navy-700 text-xs font-bold text-slate-500 dark:text-slate-400 hover:border-copper hover:text-copper transition-all"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${priceBookLoading ? 'animate-spin' : ''}`} />
+              Load Items
+            </button>
+          </div>
+          <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 rounded-2xl shadow-card overflow-hidden">
+            <div className="overflow-x-auto scrollbar-thin">
+              <table className="w-full text-left border-collapse min-w-[700px]">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-navy-950 border-b border-app-border text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3 px-5">Name</th>
+                    <th className="py-3 px-5">Trade</th>
+                    <th className="py-3 px-5">Category</th>
+                    <th className="py-3 px-5">Unit Price</th>
+                    <th className="py-3 px-5">Owner</th>
+                    <th className="py-3 px-5">Global</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-app-border dark:divide-navy-800 text-xs">
+                  {globalPriceBook.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-slate-400">Click "Load Items" to view all price book entries.</td>
+                    </tr>
+                  ) : globalPriceBook.map(item => (
+                    <tr key={item.id} className="hover:bg-slate-50/40 dark:hover:bg-navy-950/30">
+                      <td className="py-3 px-5 font-bold text-slate-900 dark:text-white">{item.name}</td>
+                      <td className="py-3 px-5 text-slate-500">{item.trade}</td>
+                      <td className="py-3 px-5 text-slate-500">{item.category}</td>
+                      <td className="py-3 px-5 font-bold text-copper">${Number(item.default_unit_price).toFixed(2)}</td>
+                      <td className="py-3 px-5 font-mono text-[10px] text-slate-400">{item.user_id ? item.user_id.slice(0,8)+'...' : 'System'}</td>
+                      <td className="py-3 px-5">
+                        {item.is_global ? (
+                          <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded text-[9px] font-bold">Global</span>
+                        ) : (
+                          <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[9px] font-bold">Private</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+            ) : activeTab === 'billing' ? (
         /* ═══════════════════════════════════════════════════
            TAB: WIRE & BILLING MANAGEMENT
         ═══════════════════════════════════════════════════ */
