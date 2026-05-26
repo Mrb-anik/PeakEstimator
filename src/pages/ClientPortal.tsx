@@ -318,14 +318,16 @@ export default function ClientPortal() {
       toast.error('Failed to submit. Please try again.');
     } else {
       // Also insert structured revision request
-      await supabase.from('revision_requests').insert({
-        project_id: project!.id,
-        share_token: shareToken!,
-        client_name: project!.client_name,
-        client_email: project!.client_email,
-        requested_changes: message,
-        specific_items: revisionItems ? revisionItems.split('\n').filter(Boolean) : [],
-      }).catch(() => {});
+      try {
+        await supabase.from('revision_requests').insert({
+          project_id: project!.id,
+          share_token: shareToken!,
+          client_name: project!.client_name,
+          client_email: project!.client_email,
+          requested_changes: message,
+          specific_items: revisionItems ? revisionItems.split('\n').filter(Boolean) : [],
+        });
+      } catch (_) { /* non-fatal */ }
       // Notify contractor
       await notifyContractor('changes', message);
       setSubmitted(true);

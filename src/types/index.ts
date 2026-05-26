@@ -148,6 +148,13 @@ export interface Project {
   is_multi_option?: boolean;
   selected_option_tier?: 'good' | 'better' | 'best' | null;
   organization_id?: string;
+  // Job costing actuals
+  job_completed_at?: string | null;
+  actual_total?: number | null;
+  actual_labor?: number | null;
+  actual_materials?: number | null;
+  actual_equipment?: number | null;
+  job_notes?: string | null;
   created_at: string;
   updated_at?: string;
 }
@@ -168,6 +175,10 @@ export interface ProjectItem {
   // Multi-option tier (additive — null/undefined = base)
   option_tier?: OptionTier;
   is_selected?: boolean;
+  // Job costing actuals
+  actual_cost?: number | null;
+  actual_quantity?: number | null;
+  actual_notes?: string | null;
   created_at?: string;
   updated_at?: string;
 }
