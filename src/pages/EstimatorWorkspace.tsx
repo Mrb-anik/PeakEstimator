@@ -22,6 +22,7 @@ import JobCostingModal from '../components/estimator/JobCostingModal';
 import SchedulePanel from '../components/estimator/SchedulePanel';
 import DepositPanel from '../components/estimator/DepositPanel';
 import SubcontractorPanel from '../components/estimator/SubcontractorPanel';
+import ProposalAnalyticsPanel from '../components/estimator/ProposalAnalyticsPanel';
 import { trackEvent, initTimeTracking } from '../lib/proposalAnalytics';
 
 const STATUSES: StatusType[] = ['lead', 'bidding', 'sent', 'approved', 'won', 'lost'];
@@ -44,7 +45,7 @@ export default function EstimatorWorkspace() {
 
   const [priceBookOpen, setPriceBookOpen] = useState(false);
   const [showJobCosting, setShowJobCosting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'schedule' | 'deposit' | 'subs' | null>(null);
+  const [activeTab, setActiveTab] = useState<'schedule' | 'deposit' | 'subs' | 'analytics' | null>(null);
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
   const [notes, setNotes] = useState('');
@@ -815,10 +816,15 @@ export default function EstimatorWorkspace() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border bg-white dark:bg-navy-900 border-slate-200 dark:border-navy-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-navy-800 transition-all">
                 <TrendingUp className="w-3.5 h-3.5" /> Job Costing
               </button>
+              <button onClick={() => setActiveTab(activeTab === 'analytics' ? null : 'analytics')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${activeTab === 'analytics' ? 'bg-copper text-white border-transparent' : 'bg-white dark:bg-navy-900 border-slate-200 dark:border-navy-700 text-slate-600 dark:text-slate-300'}`}>
+                <BarChart2 className="w-3.5 h-3.5" /> Analytics
+              </button>
             </div>
             {activeTab === 'schedule' && <SchedulePanel projectId={project.id} />}
             {activeTab === 'deposit' && <DepositPanel project={project} />}
             {activeTab === 'subs' && <SubcontractorPanel projectId={project.id} projectName={project.name} />}
+            {activeTab === 'analytics' && <ProposalAnalyticsPanel projectId={project.id} />}
           </div>
         </div>
 
