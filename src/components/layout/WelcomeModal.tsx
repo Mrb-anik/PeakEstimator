@@ -79,6 +79,7 @@ export default function WelcomeModal({ onClose }: WelcomeModalProps) {
         company_name: companyName,
         company_phone: companyPhone,
         company_email: companyEmail,
+        trade: trade as any,
         default_labor_markup: Number(laborMarkup),
         default_material_markup: Number(materialMarkup),
         default_equipment_markup: Number(equipmentMarkup),

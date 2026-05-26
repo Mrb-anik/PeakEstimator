@@ -26,6 +26,7 @@ CREATE POLICY "Admin update waitlist" ON public.waitlist
 -- Also widen the SELECT policy to include admin (not just super_admin)
 DROP POLICY IF EXISTS "Super admin view waitlist" ON public.waitlist;
 DROP POLICY IF EXISTS "Auth read waitlist" ON public.waitlist;
+DROP POLICY IF EXISTS "Admin view waitlist" ON public.waitlist;
 CREATE POLICY "Admin view waitlist" ON public.waitlist
   FOR SELECT USING (
     EXISTS (

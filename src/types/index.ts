@@ -22,6 +22,8 @@ export interface Profile {
   is_suspended?: boolean;
   role?: UserRole;
   billing_tier?: BillingTier;
+  trade?: TradeType;
+  plan_tier?: BillingTier;
   last_login_at?: string | null;
   onboarding_completed: boolean;
   onboarding_dismissed?: boolean;

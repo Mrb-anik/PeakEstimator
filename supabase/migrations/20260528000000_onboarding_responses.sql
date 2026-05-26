@@ -1,6 +1,7 @@
--- ── Onboarding Responses Table ────────────────────────────────────────────────
--- Stores per-user, per-item responses from the Enterprise Onboarding page
--- Gives admins structured visibility into each user's setup requirements
+-- Add missing columns to profiles first
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS trade TEXT DEFAULT 'general',
+  ADD COLUMN IF NOT EXISTS plan_tier TEXT DEFAULT 'free';
 
 CREATE TABLE IF NOT EXISTS public.onboarding_responses (
   id              uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -23,6 +24,13 @@ CREATE INDEX IF NOT EXISTS idx_onboarding_responses_user   ON public.onboarding_
 CREATE INDEX IF NOT EXISTS idx_onboarding_responses_status ON public.onboarding_responses(admin_status);
 
 ALTER TABLE public.onboarding_responses ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "onboarding_own_select" ON public.onboarding_responses;
+DROP POLICY IF EXISTS "onboarding_own_insert" ON public.onboarding_responses;
+DROP POLICY IF EXISTS "onboarding_own_update" ON public.onboarding_responses;
+DROP POLICY IF EXISTS "onboarding_admin_select" ON public.onboarding_responses;
+DROP POLICY IF EXISTS "onboarding_admin_update" ON public.onboarding_responses;
 
 -- Users can read/write their own responses
 CREATE POLICY "onboarding_own_select" ON public.onboarding_responses

@@ -281,12 +281,25 @@ export default function AdminPortal() {
   const handleSaveWire = async () => {
     setSavingWire(true);
     try {
-      const { error } = await supabase.from('system_settings')
-        .update({ ...wireForm, updated_at: new Date().toISOString() })
-        .neq('id', '00000000-0000-0000-0000-000000000000');
-      if (error) throw error;
+      const { data: existing, error: fetchErr } = await supabase.from('system_settings').select('id').limit(1);
+      if (fetchErr) throw fetchErr;
+
+      const payload = { ...wireForm, updated_at: new Date().toISOString() };
+
+      if (existing && existing.length > 0) {
+        const { error } = await supabase.from('system_settings')
+          .update(payload)
+          .eq('id', existing[0].id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('system_settings')
+          .insert(payload);
+        if (error) throw error;
+      }
+
       setEditingWire(false);
       toast.success('Wire transfer details updated successfully!');
+      fetchWireData();
     } catch (err: any) {
       toast.error('Save failed: ' + err.message);
     }
@@ -748,17 +761,30 @@ export default function AdminPortal() {
 
   const handleSaveFinancingSettings = async () => {
     try {
-      const { error } = await supabase
-        .from('system_settings')
-        .update({
-          financing_interest_rate: parseFloat(finForm.rate),
-          financing_max_term_months: parseInt(finForm.maxTerm, 10),
-          financing_min_amount: parseFloat(finForm.minAmount),
-          financing_enabled: finForm.enabled,
-          updated_at: new Date().toISOString()
-        })
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // update all rows
-      if (error) throw error;
+      const { data: existing, error: fetchErr } = await supabase.from('system_settings').select('id').limit(1);
+      if (fetchErr) throw fetchErr;
+
+      const payload = {
+        financing_interest_rate: parseFloat(finForm.rate),
+        financing_max_term_months: parseInt(finForm.maxTerm, 10),
+        financing_min_amount: parseFloat(finForm.minAmount),
+        financing_enabled: finForm.enabled,
+        updated_at: new Date().toISOString()
+      };
+
+      if (existing && existing.length > 0) {
+        const { error } = await supabase
+          .from('system_settings')
+          .update(payload)
+          .eq('id', existing[0].id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('system_settings')
+          .insert(payload);
+        if (error) throw error;
+      }
+
       setEditingFinancing(false);
       toast.success('Financing configuration saved');
       fetchSystemSettings();
@@ -769,17 +795,30 @@ export default function AdminPortal() {
 
   const handleSavePricingSettings = async () => {
     try {
-      const { error } = await supabase
-        .from('system_settings')
-        .update({
-          pricing_pro_monthly: parseFloat(pricingForm.proMonthly),
-          pricing_enterprise_monthly: parseFloat(pricingForm.enterpriseMonthly),
-          pricing_enterprise_setup: parseFloat(pricingForm.enterpriseSetup),
-          pricing_annual_license: parseFloat(pricingForm.annualLicense),
-          updated_at: new Date().toISOString()
-        })
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // update all rows
-      if (error) throw error;
+      const { data: existing, error: fetchErr } = await supabase.from('system_settings').select('id').limit(1);
+      if (fetchErr) throw fetchErr;
+
+      const payload = {
+        pricing_pro_monthly: parseFloat(pricingForm.proMonthly),
+        pricing_enterprise_monthly: parseFloat(pricingForm.enterpriseMonthly),
+        pricing_enterprise_setup: parseFloat(pricingForm.enterpriseSetup),
+        pricing_annual_license: parseFloat(pricingForm.annualLicense),
+        updated_at: new Date().toISOString()
+      };
+
+      if (existing && existing.length > 0) {
+        const { error } = await supabase
+          .from('system_settings')
+          .update(payload)
+          .eq('id', existing[0].id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('system_settings')
+          .insert(payload);
+        if (error) throw error;
+      }
+
       setEditingPricing(false);
       toast.success('Global pricing configuration saved');
       fetchSystemSettings();

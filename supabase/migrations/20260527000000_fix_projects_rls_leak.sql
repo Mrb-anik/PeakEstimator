@@ -9,6 +9,8 @@
 --     or the client portal queries by share_token directly (no login required)
 
 DROP POLICY IF EXISTS "projects_select" ON public.projects;
+DROP POLICY IF EXISTS "projects_own_select" ON public.projects;
+DROP POLICY IF EXISTS "projects_share_token_select" ON public.projects;
 
 -- Authenticated users see only their own projects
 CREATE POLICY "projects_own_select" ON public.projects
@@ -23,6 +25,8 @@ CREATE POLICY "projects_share_token_select" ON public.projects
 
 -- Also fix project_items: same leak exists there
 DROP POLICY IF EXISTS "project_items_select" ON public.project_items;
+DROP POLICY IF EXISTS "project_items_own_select" ON public.project_items;
+DROP POLICY IF EXISTS "project_items_share_token_select" ON public.project_items;
 
 CREATE POLICY "project_items_own_select" ON public.project_items
   FOR SELECT

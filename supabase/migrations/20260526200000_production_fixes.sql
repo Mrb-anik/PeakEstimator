@@ -20,6 +20,12 @@ ALTER TABLE public.subscriptions
   ADD COLUMN IF NOT EXISTS canceled_at      TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS updated_at       TIMESTAMPTZ DEFAULT now();
 
+-- Normalize any existing rows with invalid status values before adding constraint
+UPDATE public.subscriptions
+  SET status = 'active'
+  WHERE status IS NULL
+     OR status NOT IN ('active','past_due','canceled','pending_wire','trialing','suspended');
+
 ALTER TABLE public.subscriptions
   ADD CONSTRAINT subscriptions_status_check
   CHECK (status IN ('active','past_due','canceled','pending_wire','trialing','suspended'));
@@ -110,7 +116,7 @@ CREATE TABLE IF NOT EXISTS public.change_orders (
   revised_total   numeric DEFAULT 0,
   delta_amount    numeric GENERATED ALWAYS AS (revised_total - original_total) STORED,
   status          text DEFAULT 'draft' CHECK (status IN ('draft','sent','client_signed','rejected','voided')),
-  share_token     text DEFAULT encode(gen_random_bytes(16), 'hex') UNIQUE,
+  share_token     text DEFAULT replace(gen_random_uuid()::text, '-', '') UNIQUE,
   client_signed_at timestamptz,
   signature_data  text,
   contractor_notes text,
@@ -137,7 +143,7 @@ CREATE TABLE IF NOT EXISTS public.lien_waivers (
   client_address  text,
   property_address text,
   status          text DEFAULT 'draft' CHECK (status IN ('draft','sent','signed','voided')),
-  share_token     text DEFAULT encode(gen_random_bytes(16), 'hex') UNIQUE,
+  share_token     text DEFAULT replace(gen_random_uuid()::text, '-', '') UNIQUE,
   signed_at       timestamptz,
   signature_data  text,
   pdf_url         text,
@@ -153,16 +159,22 @@ CREATE POLICY "Public read lien waiver by token" ON public.lien_waivers
 
 -- ─── 9. FIX: Global price book admin view ──────────────────────
 -- price_book_items already has is_global col. Add admin override.
-ALTER TABLE public.price_book_items
-  ADD COLUMN IF NOT EXISTS admin_approved  BOOLEAN DEFAULT true,
-  ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES public.organizations(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'price_book_items') THEN
+    ALTER TABLE public.price_book_items
+      ADD COLUMN IF NOT EXISTS admin_approved  BOOLEAN DEFAULT true,
+      ADD COLUMN IF NOT EXISTS organization_id uuid REFERENCES public.organizations(id) ON DELETE SET NULL;
 
--- Admin can see all price book items
-DROP POLICY IF EXISTS "Admin read all price book" ON public.price_book_items;
-CREATE POLICY "Admin read all price book" ON public.price_book_items
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
-  );
+    DROP POLICY IF EXISTS "Admin read all price book" ON public.price_book_items;
+    EXECUTE $p$
+      CREATE POLICY "Admin read all price book" ON public.price_book_items
+        FOR SELECT USING (
+          EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+        )
+    $p$;
+  END IF;
+END $$;
 
 -- ─── 10. FIX: RLS — prevent cross-user profile enumeration ─────
 DROP POLICY IF EXISTS "Users read own profile" ON public.profiles;

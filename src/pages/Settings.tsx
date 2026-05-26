@@ -240,14 +240,23 @@ export default function Settings() {
   const inputClass = 'w-full px-4 py-2.5 bg-white dark:bg-navy-950 border border-slate-200 dark:border-navy-700 rounded-xl text-sm text-text-primary dark:text-text-darkPrimary placeholder-slate-400 focus:border-copper focus:ring-1 focus:ring-copper/40 transition-all';
 
   // ── Build wire rows from live data or fallback ──
+  const defaultWireRows = [
+    { label: 'Bank Name', value: 'First National Commerce Bank', field: 'bank' },
+    { label: 'Account Name', value: 'PeakEstimator Technologies Inc.', field: 'acct_name' },
+    { label: 'Account Number', value: '8821 0047 3390 1124', field: 'acct_num' },
+    { label: 'Routing Number (ABA)', value: '021 000 089', field: 'routing' },
+    { label: 'SWIFT / BIC', value: 'FNCBUS33XXX', field: 'swift' },
+    { label: 'Reference / Memo', value: `PEAK-${(profile?.company_name || 'ORG').replace(/\s+/g, '').toUpperCase().slice(0, 8)}-${selectedPlan?.toUpperCase() || 'PLAN'}`, field: 'ref' },
+  ];
+
   const wireRows = wireDetails ? [
-    { label: 'Bank Name', value: wireDetails.wire_bank_name, field: 'bank' },
-    { label: 'Account Name', value: wireDetails.wire_account_name, field: 'acct_name' },
-    { label: 'Account Number', value: wireDetails.wire_account_number, field: 'acct_num' },
-    { label: 'Routing Number (ABA)', value: wireDetails.wire_routing_number, field: 'routing' },
-    { label: 'SWIFT / BIC', value: wireDetails.wire_swift, field: 'swift' },
-    { label: 'Reference / Memo', value: `PEAK-${(profile?.company_name || 'ORG').replace(/\s+/g, '').toUpperCase().slice(0, 8)}-${selectedPlan?.toUpperCase() || 'PRO'}`, field: 'ref' },
-  ] : [];
+    { label: 'Bank Name', value: wireDetails.wire_bank_name || 'First National Commerce Bank', field: 'bank' },
+    { label: 'Account Name', value: wireDetails.wire_account_name || 'PeakEstimator Technologies Inc.', field: 'acct_name' },
+    { label: 'Account Number', value: wireDetails.wire_account_number || '8821 0047 3390 1124', field: 'acct_num' },
+    { label: 'Routing Number (ABA)', value: wireDetails.wire_routing_number || '021 000 089', field: 'routing' },
+    { label: 'SWIFT / BIC', value: wireDetails.wire_swift || 'FNCBUS33XXX', field: 'swift' },
+    { label: 'Reference / Memo', value: `PEAK-${(profile?.company_name || 'ORG').replace(/\s+/g, '').toUpperCase().slice(0, 8)}-${selectedPlan?.toUpperCase() || 'PLAN'}`, field: 'ref' },
+  ] : defaultWireRows;
 
   return (
     <div className="p-4 sm:p-8 max-w-3xl mx-auto animate-fade-in space-y-6 font-inter select-none">
@@ -617,14 +626,7 @@ export default function Settings() {
                 </h3>
               </div>
               <div className="bg-white/5 border border-white/10 rounded-xl divide-y divide-white/10 overflow-hidden">
-                {[
-                  { label: 'Bank Name', value: 'First National Commerce Bank', field: 'bank' },
-                  { label: 'Account Name', value: 'PeakEstimator Technologies Inc.', field: 'acct_name' },
-                  { label: 'Account Number', value: '8821 0047 3390 1124', field: 'acct_num' },
-                  { label: 'Routing Number (ABA)', value: '021 000 089', field: 'routing' },
-                  { label: 'SWIFT / BIC', value: 'FNCBUS33XXX', field: 'swift' },
-                  { label: 'Reference / Memo', value: `PEAK-${(profile?.company_name || 'ORG').replace(/\s+/g, '').toUpperCase().slice(0, 8)}-${selectedPlan?.toUpperCase() || 'PLAN'}`, field: 'ref' },
-                ].map(({ label, value, field }) => (
+                {wireRows.map(({ label, value, field }) => (
                   <div key={field} className="flex items-center justify-between px-4 py-3 gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">{label}</p>
