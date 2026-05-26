@@ -34,7 +34,7 @@ In **Supabase Dashboard → Project Settings → Edge Functions → Secrets**, a
 | `STRIPE_ENTERPRISE_PRICE_ID` | `price_...` | stripe-checkout |
 | `RESEND_API_KEY` | `re_...` | email-followup, notify-contractor |
 | `FROM_EMAIL` | `noreply@peakestimator.com` | All email functions |
-| `SITE_URL` | `https://lmtrx.us` | Email links, redirect URLs |
+| `SITE_URL` | `https://peakestimator.com` | Email links, redirect URLs |
 | `OPENAI_API_KEY` | `sk-...` | ai-estimator, ai-transcribe |
 | `TRACK_LOGIN_HOOK_SECRET` | *(generate a random string)* | track-login auth hook |
 
