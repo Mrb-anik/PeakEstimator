@@ -1,5 +1,5 @@
 import { NavLink, Link, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Briefcase, BookOpen, Settings, LogOut, ShieldAlert, X, Menu, Sun, Moon, Award, HelpCircle, Bell } from 'lucide-react';
+import { LayoutDashboard, Briefcase, BookOpen, Settings, LogOut, ShieldAlert, X, Menu, Sun, Moon, Award, HelpCircle, Bell, ClipboardList } from 'lucide-react';
 import { supabase } from '../../api/supabase';
 import { useAppStore } from '../../store/useAppStore';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ const navItems = [
   { path: '/price-book', label: 'Price Book', icon: BookOpen },
   { path: '/success',    label: 'Client Success', icon: Award, hideForAdmin: true },
   { path: '/support',    label: 'Support Desk', icon: HelpCircle },
+  { path: '/onboarding', label: 'Onboarding Guide', icon: ClipboardList, hideForAdmin: false },
   { path: '/settings',   label: 'Settings',   icon: Settings },
 ];
 

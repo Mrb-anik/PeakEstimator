@@ -18,6 +18,7 @@ import LandingPage from './pages/LandingPage';
 import AdminPortal from './pages/AdminPortal';
 import ClientSuccess from './pages/ClientSuccess';
 import SupportDesk from './pages/SupportDesk';
+import EnterpriseOnboarding from './pages/EnterpriseOnboarding';
 
 function SmartRoot() {
   const [session, setSession] = useState<boolean | null>(null);
@@ -133,6 +134,7 @@ function App() {
         <Route path="/admin"       element={<ProtectedRoute><AppLayout><AdminRoute><AdminPortal /></AdminRoute></AppLayout></ProtectedRoute>} />
         <Route path="/success"     element={<ProtectedRoute><AppLayout><ClientSuccess /></AppLayout></ProtectedRoute>} />
         <Route path="/support"     element={<ProtectedRoute><AppLayout><SupportDesk /></AppLayout></ProtectedRoute>} />
+        <Route path="/onboarding"  element={<EnterpriseOnboarding />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
