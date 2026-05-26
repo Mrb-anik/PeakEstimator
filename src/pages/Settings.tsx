@@ -31,6 +31,27 @@ export default function Settings() {
   const [submittingWire, setSubmittingWire] = useState(false);
   const [wireSubmitted, setWireSubmitted] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'pro' | 'enterprise' | null>(null);
+  
+  // Dynamic pricing
+  const [systemPricing, setSystemPricing] = useState({
+    proMonthly: 49,
+    enterpriseMonthly: 199,
+    enterpriseSetup: 499,
+    annualLicense: 8000
+  });
+
+  useEffect(() => {
+    supabase.from('system_settings').select('*').single().then(({ data }) => {
+      if (data) {
+        setSystemPricing({
+          proMonthly: data.pricing_pro_monthly ?? 49,
+          enterpriseMonthly: data.pricing_enterprise_monthly ?? 199,
+          enterpriseSetup: data.pricing_enterprise_setup ?? 499,
+          annualLicense: data.pricing_annual_license ?? 8000
+        });
+      }
+    });
+  }, []);
 
   // Dark Mode State & Handler
   const [isDark, setIsDark] = useState(() => {
@@ -606,7 +627,7 @@ export default function Settings() {
                 <div>
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-extrabold px-2.5 py-0.5 bg-copper/20 border border-copper/40 text-copper rounded-full uppercase tracking-wider">Pro</span>
-                    <span className="text-base font-sora font-extrabold text-white">$49 <span className="text-xs text-white/60 font-medium">/ month</span></span>
+                    <span className="text-base font-sora font-extrabold text-white">${systemPricing.proMonthly} <span className="text-xs text-white/60 font-medium">/ month</span></span>
                   </div>
                   <h4 className="text-sm font-bold text-white font-sora mt-2">PeakEstimator Pro Plan</h4>
                   <p className="text-[11px] text-white/50 mt-1 leading-relaxed">
@@ -643,7 +664,7 @@ export default function Settings() {
                 <div>
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-extrabold px-2.5 py-0.5 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded-full uppercase tracking-wider">Enterprise</span>
-                    <span className="text-base font-sora font-extrabold text-white">$499 <span className="text-xs text-white/60 font-medium">setup + $199/mo</span></span>
+                    <span className="text-base font-sora font-extrabold text-white">${systemPricing.enterpriseSetup} <span className="text-xs text-white/60 font-medium">setup + ${systemPricing.enterpriseMonthly}/mo</span></span>
                   </div>
                   <h4 className="text-sm font-bold text-white font-sora mt-2">PeakEstimator Enterprise Plan</h4>
                   <p className="text-[11px] text-white/50 mt-1 leading-relaxed">
@@ -677,7 +698,7 @@ export default function Settings() {
           {/* Plan Highlight */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              { label: 'Annual License', value: '$8,000 / year', sub: '≈ $667/mo' },
+              { label: 'Annual License', value: `$${systemPricing.annualLicense.toLocaleString()} / year`, sub: `≈ $${Math.round(systemPricing.annualLicense / 12)}/mo` },
               { label: 'Proposal Credits', value: 'Unlimited', sub: 'No monthly caps' },
               { label: 'AI Scope Assists', value: 'Unlimited', sub: 'Powered by Gemini' },
             ].map(item => (

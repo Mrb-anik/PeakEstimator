@@ -201,6 +201,19 @@ export interface OrganizationSettings {
   updated_at: string;
 }
 
+export interface SystemSettings {
+  id: string;
+  financing_enabled: boolean;
+  financing_interest_rate: number;
+  financing_max_term_months: number;
+  financing_min_amount: number;
+  pricing_pro_monthly: number;
+  pricing_enterprise_monthly: number;
+  pricing_enterprise_setup: number;
+  pricing_annual_license: number;
+  updated_at: string;
+}
+
 export interface AuditLog {
   id: string;
   organization_id: string;

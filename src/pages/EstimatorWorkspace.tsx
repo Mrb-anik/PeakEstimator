@@ -53,6 +53,23 @@ export default function EstimatorWorkspace() {
   const [lockingVersion, setLockingVersion] = useState(false);
   const [agreementModalOpen, setAgreementModalOpen] = useState(false);
 
+  // Dynamic pricing
+  const [systemPricing, setSystemPricing] = useState({
+    enterpriseSetup: 499,
+    annualLicense: 8000
+  });
+
+  useEffect(() => {
+    supabase.from('system_settings').select('*').single().then(({ data }) => {
+      if (data) {
+        setSystemPricing({
+          enterpriseSetup: data.pricing_enterprise_setup ?? 499,
+          annualLicense: data.pricing_annual_license ?? 8000
+        });
+      }
+    });
+  }, []);
+
   const fetchVersions = async () => {
     if (!project) return;
     setLoadingVersions(true);
@@ -329,10 +346,10 @@ export default function EstimatorWorkspace() {
           <strong>1. Objective:</strong> PeakEstimator Pro equips the authorized contractor with a dedicated mobile-first sales engine designed to eliminate manual paper bidding. By using interactive digital proposals, both parties agree to complete work scopes and capture signatures on the secure PeakEstimator network.
         </p>
         <p style="margin-bottom: 10px;">
-          <strong>2. Activation & Setup:</strong> Initial setup fee of $499 USD covers onboarding, server provisioning, and dedicated training for the platform. License features are active immediately upon signing.
+          <strong>2. Activation & Setup:</strong> Initial setup fee of $${systemPricing.enterpriseSetup} USD covers onboarding, server provisioning, and dedicated training for the platform. License features are active immediately upon signing.
         </p>
         <p style="margin-bottom: 20px;">
-          <strong>3. Billing & ROI:</strong> Following a 30-day setup and onboarding evaluation, the subscription transitions to an annual platform license at $8,000 USD billed annually. All user data, client databases, and cost files remain the absolute private property of the partner.
+          <strong>3. Billing & ROI:</strong> Following a 30-day setup and onboarding evaluation, the subscription transitions to an annual platform license at $${systemPricing.annualLicense.toLocaleString()} USD billed annually. All user data, client databases, and cost files remain the absolute private property of the partner.
         </p>
 
         <div class="grid" style="margin-top: 40px;">
@@ -842,13 +859,13 @@ export default function EstimatorWorkspace() {
               <div className="py-4">
                 <h4 className="font-bold text-slate-800 dark:text-white mb-2">2. Implementation Onboarding & Support</h4>
                 <p>
-                  Initial setup & onboarding fee ($499 one-time) guarantees complete company database importing, private server environment configuration, and training calls. All pricing formulas, vendor spreadsheets, and margins remain the private properties of the partner.
+                  Initial setup & onboarding fee (${systemPricing.enterpriseSetup} one-time) guarantees complete company database importing, private server environment configuration, and training calls. All pricing formulas, vendor spreadsheets, and margins remain the private properties of the partner.
                 </p>
               </div>
               <div className="py-4">
                 <h4 className="font-bold text-slate-800 dark:text-white mb-2">3. Subscription Licensing terms</h4>
                 <p>
-                  After the initial 30-day onboarding phase, upon confirming ROI and platform value, the account transitions to the standard PeakEstimator Pro annual license of $8,000 USD billed annually.
+                  After the initial 30-day onboarding phase, upon confirming ROI and platform value, the account transitions to the standard PeakEstimator Pro annual license of ${systemPricing.annualLicense.toLocaleString()} USD billed annually.
                 </p>
               </div>
               <div className="py-4">

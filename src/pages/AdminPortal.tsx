@@ -91,7 +91,13 @@ export default function AdminPortal() {
   const [systemSettings, setSystemSettings] = useState<any>(null);
   const [editingFinancing, setEditingFinancing] = useState(false);
   const [finForm, setFinForm] = useState({ rate: '9.99', maxTerm: '120', minAmount: '1000', enabled: true });
-
+  const [editingPricing, setEditingPricing] = useState(false);
+  const [pricingForm, setPricingForm] = useState({
+    proMonthly: '49',
+    enterpriseMonthly: '199',
+    enterpriseSetup: '499',
+    annualLicense: '8000'
+  });
   // Templates
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
@@ -215,6 +221,12 @@ export default function AdminPortal() {
           maxTerm: String(data.financing_max_term_months),
           minAmount: String(data.financing_min_amount),
           enabled: data.financing_enabled
+        });
+        setPricingForm({
+          proMonthly: String(data.pricing_pro_monthly ?? 49),
+          enterpriseMonthly: String(data.pricing_enterprise_monthly ?? 199),
+          enterpriseSetup: String(data.pricing_enterprise_setup ?? 499),
+          annualLicense: String(data.pricing_annual_license ?? 8000)
         });
       }
     } catch (e) {
@@ -638,6 +650,27 @@ export default function AdminPortal() {
       if (error) throw error;
       setEditingFinancing(false);
       toast.success('Financing configuration saved');
+      fetchSystemSettings();
+    } catch (err: any) {
+      toast.error('Save failed: ' + err.message);
+    }
+  };
+
+  const handleSavePricingSettings = async () => {
+    try {
+      const { error } = await supabase
+        .from('system_settings')
+        .update({
+          pricing_pro_monthly: parseFloat(pricingForm.proMonthly),
+          pricing_enterprise_monthly: parseFloat(pricingForm.enterpriseMonthly),
+          pricing_enterprise_setup: parseFloat(pricingForm.enterpriseSetup),
+          pricing_annual_license: parseFloat(pricingForm.annualLicense),
+          updated_at: new Date().toISOString()
+        })
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // update all rows
+      if (error) throw error;
+      setEditingPricing(false);
+      toast.success('Global pricing configuration saved');
       fetchSystemSettings();
     } catch (err: any) {
       toast.error('Save failed: ' + err.message);
@@ -2131,6 +2164,94 @@ Please assign an administrator immediately to prevent collision and address.`,
                   { label: 'Max Term', value: `${systemSettings?.financing_max_term_months ?? '120'} months`, icon: Timer },
                   { label: 'Minimum Amount', value: `$${Number(systemSettings?.financing_min_amount ?? 1000).toLocaleString()}`, icon: DollarSign },
                   { label: 'Module Status', value: systemSettings?.financing_enabled ? 'Active' : 'Disabled', icon: systemSettings?.financing_enabled ? CircleCheck : CircleX }
+                ].map(stat => {
+                  const StatIcon = stat.icon;
+                  return (
+                    <div key={stat.label} className="bg-slate-50 dark:bg-navy-950 border border-slate-100 dark:border-navy-900 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <StatIcon className="w-3.5 h-3.5 text-copper" />
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{stat.label}</span>
+                      </div>
+                      <span className="font-sora font-extrabold text-slate-900 dark:text-white text-sm">{stat.value}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Pricing Config Panel */}
+          <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card rounded-2xl p-6 mt-6">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="font-sora font-extrabold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-copper" /> Global Pricing Configuration
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">Configure platform pricing tiers shown to prospects.</p>
+              </div>
+              <button
+                onClick={() => setEditingPricing(!editingPricing)}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 dark:border-navy-800 hover:border-copper text-slate-500 dark:text-slate-400 hover:text-copper rounded-xl text-xs font-bold transition-all"
+              >
+                {editingPricing ? <X className="w-3.5 h-3.5" /> : <Pencil className="w-3.5 h-3.5" />}
+                {editingPricing ? 'Cancel' : 'Edit Config'}
+              </button>
+            </div>
+
+            {editingPricing ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Pro Monthly ($)</label>
+                  <input
+                    type="number"
+                    value={pricingForm.proMonthly}
+                    onChange={e => setPricingForm(p => ({ ...p, proMonthly: e.target.value }))}
+                    className="w-full bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-850 rounded-xl px-3 py-2 text-sm focus:border-copper focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Enterprise Monthly ($)</label>
+                  <input
+                    type="number"
+                    value={pricingForm.enterpriseMonthly}
+                    onChange={e => setPricingForm(p => ({ ...p, enterpriseMonthly: e.target.value }))}
+                    className="w-full bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-850 rounded-xl px-3 py-2 text-sm focus:border-copper focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Enterprise Setup ($)</label>
+                  <input
+                    type="number"
+                    value={pricingForm.enterpriseSetup}
+                    onChange={e => setPricingForm(p => ({ ...p, enterpriseSetup: e.target.value }))}
+                    className="w-full bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-850 rounded-xl px-3 py-2 text-sm focus:border-copper focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 block mb-1">Annual License ($)</label>
+                  <input
+                    type="number"
+                    value={pricingForm.annualLicense}
+                    onChange={e => setPricingForm(p => ({ ...p, annualLicense: e.target.value }))}
+                    className="w-full bg-slate-50 dark:bg-navy-950 border border-slate-200 dark:border-navy-850 rounded-xl px-3 py-2 text-sm focus:border-copper focus:outline-none"
+                  />
+                </div>
+                <div className="sm:col-span-2 lg:col-span-4">
+                  <button
+                    onClick={handleSavePricingSettings}
+                    className="px-6 py-2.5 bg-copper hover:bg-copper-hover text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5"
+                  >
+                    <Save className="w-3.5 h-3.5" /> Save Pricing Config
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                {[
+                  { label: 'Pro Monthly', value: `$${systemSettings?.pricing_pro_monthly ?? 49}`, icon: DollarSign },
+                  { label: 'Enterprise Monthly', value: `$${systemSettings?.pricing_enterprise_monthly ?? 199}`, icon: DollarSign },
+                  { label: 'Enterprise Setup', value: `$${systemSettings?.pricing_enterprise_setup ?? 499}`, icon: DollarSign },
+                  { label: 'Annual License', value: `$${systemSettings?.pricing_annual_license ?? 8000}`, icon: DollarSign }
                 ].map(stat => {
                   const StatIcon = stat.icon;
                   return (
