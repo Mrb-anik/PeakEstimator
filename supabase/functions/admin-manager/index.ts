@@ -38,7 +38,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized. Admin access required." }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    const { action, email, fullName, companyName, userId } = await req.json();
+    const { action, email, fullName, companyName, userId, organizationId, role } = await req.json();
 
     if (action === 'invite') {
       if (!email) {
@@ -50,6 +50,8 @@ serve(async (req) => {
         data: {
           full_name: fullName || '',
           company_name: companyName || '',
+          organization_id: organizationId || '',
+          role: role || 'admin',
         },
         redirectTo: `${Deno.env.get("SITE_URL") || "https://peakeastimator.top"}/dashboard`,
       });

@@ -18,6 +18,7 @@ export interface Profile {
   default_material_markup: number;
   default_equipment_markup: number;
   default_tax_rate: number;
+  organization_id?: string;
   is_admin?: boolean;
   is_suspended?: boolean;
   role?: UserRole;

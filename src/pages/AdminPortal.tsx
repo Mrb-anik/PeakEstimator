@@ -21,7 +21,7 @@ interface WaitlistItem {
   created_at: string;
 }
 
-type AdminTab = 'members' | 'crm' | 'integrations' | 'support' | 'email_logs' | 'waitlist' | 'onboarding' | 'feature_flags' | 'ai_settings' | 'automation' | 'templates' | 'audit_logs' | 'revenue' | 'broadcast' | 'churn' | 'billing' | 'stripe' | 'pricebook_admin';
+type AdminTab = 'members' | 'crm' | 'integrations' | 'support' | 'email_logs' | 'waitlist' | 'onboarding' | 'feature_flags' | 'ai_settings' | 'automation' | 'templates' | 'audit_logs' | 'revenue' | 'broadcast' | 'churn' | 'billing' | 'stripe' | 'pricebook_admin' | 'sub_accounts';
 
 export default function AdminPortal() {
   const { triggerEvent } = useEventBus();
@@ -79,6 +79,28 @@ export default function AdminPortal() {
   // Feature Flags
   const [featureFlags, setFeatureFlags] = useState<FeatureFlag[]>([]);
   const [flagsLoading, setFlagsLoading] = useState(false);
+
+  // Sub-Accounts (Organizations)
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [orgsLoading, setOrgsLoading] = useState(false);
+  const [showOrgModal, setShowOrgModal] = useState(false);
+  const [editingOrg, setEditingOrg] = useState<any | null>(null);
+  const [orgForm, setOrgForm] = useState({ name: '', subdomain: '', billing_tier: 'free' as any });
+  const [showOrgFlagsModal, setShowOrgFlagsModal] = useState(false);
+  const [orgFlagsTarget, setOrgFlagsTarget] = useState<any | null>(null);
+  const [orgFlagsList, setOrgFlagsList] = useState<FeatureFlag[]>([]);
+  const [savingOrgFlags, setSavingOrgFlags] = useState(false);
+  const [showOrgLimitsModal, setShowOrgLimitsModal] = useState(false);
+  const [orgLimitsTarget, setOrgLimitsTarget] = useState<any | null>(null);
+  const [orgLimitCents, setOrgLimitCents] = useState(500);
+  const [orgUsageCents, setOrgUsageCents] = useState(0);
+  const [savingOrgLimits, setSavingOrgLimits] = useState(false);
+  const [showInviteOrgModal, setShowInviteOrgModal] = useState(false);
+  const [inviteOrgTarget, setInviteOrgTarget] = useState<any | null>(null);
+  const [inviteOrgEmail, setInviteOrgEmail] = useState('');
+  const [inviteOrgName, setInviteOrgName] = useState('');
+  const [inviteOrgRole, setInviteOrgRole] = useState('admin');
+  const [invitingOrgUser, setInvitingOrgUser] = useState(false);
 
   // AI Settings
   const [aiUsage, setAiUsage] = useState<AIUsageLimit | null>(null);
@@ -1158,6 +1180,258 @@ Please assign an administrator immediately to prevent collision and address.`,
     setSendingPasswordReset(null);
   };
 
+  // ── Sub-Accounts (Organizations) Management ────────────────────────────────
+  const fetchOrganizations = async () => {
+    setOrgsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setOrganizations(data || []);
+    } catch (e: any) {
+      toast.error('Failed to fetch organizations: ' + e.message);
+    } finally {
+      setOrgsLoading(false);
+    }
+  };
+
+  const handleSaveOrg = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orgForm.name.trim()) return;
+
+    setOrgsLoading(true);
+    try {
+      if (editingOrg) {
+        // Update existing organization
+        const { error } = await supabase
+          .from('organizations')
+          .update({
+            name: orgForm.name.trim(),
+            subdomain: orgForm.subdomain.trim() || null,
+            billing_tier: orgForm.billing_tier,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingOrg.id);
+
+        if (error) throw error;
+
+        // Also sync the subscription plan if it exists
+        await supabase
+          .from('subscriptions')
+          .update({ plan: orgForm.billing_tier, status: orgForm.billing_tier === 'free' ? 'free' : 'active' })
+          .eq('organization_id', editingOrg.id);
+
+        toast.success('Organization updated successfully');
+      } else {
+        // Create new organization
+        const { data: newOrg, error } = await supabase
+          .from('organizations')
+          .insert({
+            name: orgForm.name.trim(),
+            subdomain: orgForm.subdomain.trim() || null,
+            billing_tier: orgForm.billing_tier
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const orgId = newOrg.id;
+
+        // Provision defaults for new organization
+        await supabase.from('organization_settings').insert({ organization_id: orgId }).select();
+        await supabase.from('subscriptions').insert({
+          organization_id: orgId,
+          plan: orgForm.billing_tier,
+          status: orgForm.billing_tier === 'free' ? 'free' : 'active'
+        }).select();
+
+        const limitCents = orgForm.billing_tier === 'enterprise' ? 5000 : orgForm.billing_tier === 'pro' ? 2000 : 500;
+        await supabase.from('ai_usage_limits').insert({
+          organization_id: orgId,
+          monthly_limit_cents: limitCents,
+          monthly_usage_cents: 0
+        }).select();
+
+        await supabase.from('feature_flags').insert([
+          { organization_id: orgId, name: 'good-better-best', description: 'Multi-option proposal packages', enabled_globally: true },
+          { organization_id: orgId, name: 'ai-scope', description: 'AI scope assistant and photo-transcriber', enabled_globally: true },
+          { organization_id: orgId, name: 'mobile-field', description: 'Offline-friendly mobile Field Mode PWA', enabled_globally: true },
+          { organization_id: orgId, name: 'automation', description: 'Automated campaign follow-up rules', enabled_globally: true },
+          { organization_id: orgId, name: 'financing', description: 'Monthly payment financing calculator', enabled_globally: true },
+          { organization_id: orgId, name: 'templates', description: 'Trade-specific estimate templates', enabled_globally: true }
+        ]).select();
+
+        toast.success('New sub-account created & provisioned!');
+      }
+
+      setShowOrgModal(false);
+      setEditingOrg(null);
+      setOrgForm({ name: '', subdomain: '', billing_tier: 'free' });
+      fetchOrganizations();
+    } catch (err: any) {
+      toast.error('Failed to save organization: ' + err.message);
+    } finally {
+      setOrgsLoading(false);
+    }
+  };
+
+  const handleDeleteOrg = async (orgId: string, name: string) => {
+    if (!confirm(`Are you sure you want to permanently delete the sub-account "${name}"? This deletes all organization settings, projects, and associated data.`)) return;
+
+    setOrgsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('organizations')
+        .delete()
+        .eq('id', orgId);
+
+      if (error) throw error;
+      toast.success('Organization deleted successfully');
+      fetchOrganizations();
+    } catch (e: any) {
+      toast.error('Failed to delete organization: ' + e.message);
+    } finally {
+      setOrgsLoading(false);
+    }
+  };
+
+  const fetchOrgFeatureFlags = async (org: any) => {
+    setOrgFlagsTarget(org);
+    setSavingOrgFlags(true);
+    try {
+      const { data, error } = await supabase
+        .from('feature_flags')
+        .select('*')
+        .eq('organization_id', org.id);
+      if (error) throw error;
+      setOrgFlagsList(data || []);
+      setShowOrgFlagsModal(true);
+    } catch (e: any) {
+      toast.error('Failed to load feature flags: ' + e.message);
+    } finally {
+      setSavingOrgFlags(false);
+    }
+  };
+
+  const handleToggleOrgFlag = async (flagId: string, currentEnabled: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('feature_flags')
+        .update({ enabled_globally: !currentEnabled, updated_at: new Date().toISOString() })
+        .eq('id', flagId);
+      if (error) throw error;
+      
+      setOrgFlagsList(prev =>
+        prev.map(f => (f.id === flagId ? { ...f, enabled_globally: !currentEnabled } : f))
+      );
+      toast.success('Feature flag toggled');
+    } catch (e: any) {
+      toast.error('Failed to toggle flag: ' + e.message);
+    }
+  };
+
+  const fetchOrgAiLimits = async (org: any) => {
+    setOrgLimitsTarget(org);
+    setSavingOrgLimits(true);
+    try {
+      const { data, error } = await supabase
+        .from('ai_usage_limits')
+        .select('*')
+        .eq('organization_id', org.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setOrgLimitCents(data.monthly_limit_cents);
+        setOrgUsageCents(data.monthly_usage_cents);
+      } else {
+         setOrgLimitCents(500);
+         setOrgUsageCents(0);
+      }
+      setShowOrgLimitsModal(true);
+    } catch (e: any) {
+      toast.error('Failed to load AI limits: ' + e.message);
+    } finally {
+      setSavingOrgLimits(false);
+    }
+  };
+
+  const handleSaveOrgAiLimits = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orgLimitsTarget) return;
+
+    setSavingOrgLimits(true);
+    try {
+      const { error } = await supabase
+        .from('ai_usage_limits')
+        .upsert({
+          organization_id: orgLimitsTarget.id,
+          monthly_limit_cents: orgLimitCents,
+          monthly_usage_cents: orgUsageCents
+        }, { onConflict: 'organization_id' });
+
+      if (error) throw error;
+      toast.success('AI usage limits updated successfully');
+      setShowOrgLimitsModal(false);
+    } catch (e: any) {
+      toast.error('Failed to save AI limits: ' + e.message);
+    } finally {
+      setSavingOrgLimits(false);
+    }
+  };
+
+  const handleInviteUserToOrg = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteOrgEmail.trim() || !inviteOrgTarget) return;
+    setInvitingOrgUser(true);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("No active session");
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-manager`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action: 'invite',
+          email: inviteOrgEmail.trim(),
+          fullName: inviteOrgName.trim(),
+          organizationId: inviteOrgTarget.id,
+          role: inviteOrgRole
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to invite user");
+
+      await triggerEvent({
+        entityType: 'member',
+        actionType: 'invited',
+        title: 'Sub-Account Owner Invited',
+        description: `Invited user ${inviteOrgEmail} to sub-account "${inviteOrgTarget.name}".`,
+        sendNotification: true
+      });
+
+      toast.success(`Invitation sent successfully to ${inviteOrgEmail}`);
+      setShowInviteOrgModal(false);
+      setInviteOrgEmail('');
+      setInviteOrgName('');
+      setInviteOrgRole('admin');
+      fetchData();
+    } catch (err: any) {
+      toast.error('Invite failed: ' + err.message);
+    } finally {
+      setInvitingOrgUser(false);
+    }
+  };
+
   // ── Agency Masquerade ──────────────────────────────────────────────────────
   const handleLoginAs = async (member: Profile) => {
     startImpersonation(member);
@@ -1447,6 +1721,7 @@ Please assign an administrator immediately to prevent collision and address.`,
         <div className="flex items-center gap-1 flex-wrap border-t border-slate-100 dark:border-navy-900 pt-2">
           <span className="text-[9px] font-bold text-copper/80 uppercase tracking-widest mr-2">Enterprise</span>
           {[
+            { id: 'sub_accounts', label: 'Sub-Accounts', icon: Building2 },
             { id: 'revenue', label: 'Revenue', icon: TrendingUp },
             { id: 'billing', label: 'Wire & Billing', icon: CreditCard },
             { id: 'feature_flags', label: 'Feature Flags', icon: Flag },
@@ -1467,6 +1742,7 @@ Please assign an administrator immediately to prevent collision and address.`,
                   setActiveTab(tab.id as AdminTab);
                   setSelectedCrmUser(null);
                   setSelectedTicket(null);
+                  if (tab.id === 'sub_accounts') fetchOrganizations();
                   if (tab.id === 'feature_flags') fetchFeatureFlags();
                   if (tab.id === 'ai_settings') fetchAiSettings();
                   if (tab.id === 'automation') fetchSystemSettings();
@@ -3693,8 +3969,486 @@ Please assign an administrator immediately to prevent collision and address.`,
         </div>
 
 
+      ) : activeTab === 'sub_accounts' ? (
+        /* ═══════════════════════════════════════════════════
+           TAB: SUB-ACCOUNTS (ORGANIZATIONS) MANAGER
+        ═══════════════════════════════════════════════════ */
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="font-sora font-extrabold text-slate-900 dark:text-white text-sm flex items-center gap-2 mb-1">
+                <Building2 className="w-4 h-4 text-copper" /> Sub-Accounts (Organizations)
+              </h2>
+              <p className="text-[11px] text-slate-400">Reseller dashboard. View, manage, edit billing tiers, customize feature flags, set AI limits, and impersonate owners.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchOrganizations}
+                disabled={orgsLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-navy-800 text-xs font-bold text-slate-500 dark:text-slate-400 hover:border-copper hover:text-copper transition-all"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${orgsLoading ? 'animate-spin' : ''}`} />
+                Reload List
+              </button>
+              <button
+                onClick={() => { setEditingOrg(null); setOrgForm({ name: '', subdomain: '', billing_tier: 'free' }); setShowOrgModal(true); }}
+                className="flex items-center gap-1.5 px-4 py-1.5 bg-copper hover:bg-copper-hover text-white rounded-xl text-xs font-bold transition-all shadow-md"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Create Sub-Account
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 rounded-2xl shadow-card overflow-hidden">
+            <div className="overflow-x-auto scrollbar-thin font-inter">
+              <table className="w-full text-left border-collapse min-w-[900px]">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-navy-950 border-b border-app-border text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3.5 px-5">Company / Org Name</th>
+                    <th className="py-3.5 px-5">Subdomain</th>
+                    <th className="py-3.5 px-5">Billing Tier</th>
+                    <th className="py-3.5 px-5">Created At</th>
+                    <th className="py-3.5 px-5 text-center">Active Seats</th>
+                    <th className="py-3.5 px-5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-app-border dark:divide-navy-800 text-xs">
+                  {orgsLoading && organizations.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-slate-400">Loading sub-accounts...</td>
+                    </tr>
+                  ) : organizations.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-slate-400">No organizations found. Click "Create Sub-Account" to start.</td>
+                    </tr>
+                  ) : (
+                    organizations.map(org => {
+                      const orgMembers = members.filter(m => m.organization_id === org.id);
+                      const memberCount = orgMembers.length;
+                      
+                      // Find owner or any user to impersonate
+                      const owner = orgMembers.find(m => m.role === 'admin' || m.role === 'super_admin') || orgMembers[0];
+
+                      return (
+                        <tr key={org.id} className="hover:bg-slate-50/40 dark:hover:bg-navy-950/30">
+                          <td className="py-4 px-5">
+                            <div className="font-bold text-slate-900 dark:text-white">{org.name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">{org.id}</div>
+                          </td>
+                          <td className="py-4 px-5 text-slate-500 font-mono">
+                            {org.subdomain ? `${org.subdomain}.peakeastimator.top` : '—'}
+                          </td>
+                          <td className="py-4 px-5">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wide ${
+                              org.billing_tier === 'enterprise' ? 'bg-copper/20 text-copper' :
+                              org.billing_tier === 'pro' ? 'bg-blue-500/20 text-blue-400' :
+                              'bg-slate-100 text-slate-500 dark:bg-navy-900 dark:text-slate-400'
+                            }`}>
+                              {org.billing_tier}
+                            </span>
+                          </td>
+                          <td className="py-4 px-5 text-slate-400">
+                            {new Date(org.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="py-4 px-5 text-center font-bold text-slate-900 dark:text-white">
+                            {memberCount}
+                          </td>
+                          <td className="py-4 px-5">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {owner ? (
+                                <button
+                                  onClick={() => handleLoginAs(owner)}
+                                  className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 dark:bg-navy-950 text-slate-700 dark:text-slate-300 rounded-lg text-[10px] font-bold hover:bg-copper hover:text-white transition-all shadow-sm"
+                                  title={`Impersonate ${owner.full_name || owner.email}`}
+                                >
+                                  <LogIn className="w-3 h-3" />
+                                  Login As
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => { setInviteOrgTarget(org); setInviteOrgEmail(''); setInviteOrgName(''); setInviteOrgRole('admin'); setShowInviteOrgModal(true); }}
+                                  className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg text-[10px] font-bold hover:bg-amber-500 hover:text-white transition-all"
+                                >
+                                  <UserPlus className="w-3 h-3" />
+                                  Invite Owner
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => { setInviteOrgTarget(org); setInviteOrgEmail(''); setInviteOrgName(''); setInviteOrgRole('estimator'); setShowInviteOrgModal(true); }}
+                                className="p-1.5 border border-slate-200 dark:border-navy-800 rounded-lg text-slate-400 hover:border-copper hover:text-copper transition-all"
+                                title="Invite Team Member"
+                              >
+                                <UserPlus className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => fetchOrgFeatureFlags(org)}
+                                className="p-1.5 border border-slate-200 dark:border-navy-800 rounded-lg text-slate-400 hover:border-copper hover:text-copper transition-all"
+                                title="Edit Feature Flags"
+                              >
+                                <Flag className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => fetchOrgAiLimits(org)}
+                                className="p-1.5 border border-slate-200 dark:border-navy-800 rounded-lg text-slate-400 hover:border-copper hover:text-copper transition-all"
+                                title="Edit AI limits"
+                              >
+                                <Bot className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => { setEditingOrg(org); setOrgForm({ name: org.name, subdomain: org.subdomain || '', billing_tier: org.billing_tier }); setShowOrgModal(true); }}
+                                className="p-1.5 border border-slate-200 dark:border-navy-800 rounded-lg text-slate-400 hover:border-copper hover:text-copper transition-all"
+                                title="Edit Org Settings"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                onClick={() => handleDeleteOrg(org.id, org.name)}
+                                className="p-1.5 border border-slate-200 dark:border-navy-800 rounded-lg text-slate-400 hover:border-red-500 hover:text-red-500 transition-all"
+                                title="Delete Sub-Account"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
       ) : null
       }
+
+      {/* ── Sub-Account (Organization) Modal ─────────────────── */}
+      {showOrgModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-navy rounded-2xl shadow-2xl border border-app-border dark:border-navy-700 w-full max-w-md p-6 space-y-5 animate-scale-in">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-sora font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-copper" />
+                  {editingOrg ? 'Edit Sub-Account' : 'Create Sub-Account'}
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-inter">Configure organization credentials and default tier.</p>
+              </div>
+              <button
+                onClick={() => { setShowOrgModal(false); setEditingOrg(null); }}
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-navy-800 transition-colors"
+              >
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveOrg} className="space-y-4 font-inter">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                  Sub-Account Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={orgForm.name}
+                  onChange={e => setOrgForm(p => ({ ...p, name: e.target.value }))}
+                  placeholder="e.g. Zenith Roofing Solutions"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-navy-700 bg-slate-50 dark:bg-navy-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-copper transition-all placeholder-slate-400 dark:placeholder-slate-550"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                  Custom Subdomain (optional)
+                </label>
+                <div className="flex items-center">
+                  <input
+                    type="text"
+                    value={orgForm.subdomain}
+                    onChange={e => setOrgForm(p => ({ ...p, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                    placeholder="zenith"
+                    className="flex-1 px-3.5 py-2.5 rounded-l-xl border border-r-0 border-slate-200 dark:border-navy-700 bg-slate-50 dark:bg-navy-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-copper transition-all font-mono placeholder-slate-400 dark:placeholder-slate-550"
+                  />
+                  <span className="px-3 py-2.5 bg-slate-100 dark:bg-navy-950 border border-slate-200 dark:border-navy-700 rounded-r-xl text-[11px] font-semibold text-slate-500 font-mono">
+                    .peakeastimator.top
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                  Billing Tier
+                </label>
+                <select
+                  value={orgForm.billing_tier}
+                  onChange={e => setOrgForm(p => ({ ...p, billing_tier: e.target.value as any }))}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-navy-700 bg-slate-50 dark:bg-navy-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-copper transition-all font-medium"
+                >
+                  <option value="free">Free Trial Tier</option>
+                  <option value="pro">Pro Contractor Tier</option>
+                  <option value="enterprise">Enterprise Agency Tier</option>
+                </select>
+              </div>
+
+              {!editingOrg && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-xl text-[11px] text-blue-600 dark:text-blue-400">
+                  <strong>Note:</strong> Creating this sub-account will automatically provision default settings, subscription profile, AI credits, and 6 standard feature flags.
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={orgsLoading || !orgForm.name.trim()}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-copper text-white text-sm font-bold hover:opacity-90 active:opacity-80 transition-all disabled:opacity-50"
+                >
+                  {orgsLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {orgsLoading ? 'Saving...' : editingOrg ? 'Update Settings' : 'Create & Provision'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowOrgModal(false); setEditingOrg(null); }}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-navy-700 text-sm font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-navy-800 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Invite User directly to Organization Modal ── */}
+      {showInviteOrgModal && inviteOrgTarget && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-navy rounded-2xl shadow-2xl border border-app-border dark:border-navy-700 w-full max-w-md p-6 space-y-5 animate-scale-in">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-sora font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-copper" />
+                  Invite User to {inviteOrgTarget.name}
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-inter">The user will join this sub-account upon registration.</p>
+              </div>
+              <button
+                onClick={() => { setShowInviteOrgModal(false); setInviteOrgTarget(null); }}
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-navy-800 transition-colors"
+              >
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+
+            <form onSubmit={handleInviteUserToOrg} className="space-y-4 font-inter">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                  Email Address <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={inviteOrgEmail}
+                  onChange={e => setInviteOrgEmail(e.target.value)}
+                  placeholder="name@company.com"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-navy-700 bg-slate-50 dark:bg-navy-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-copper transition-all placeholder-slate-400 dark:placeholder-slate-550"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Full Name</label>
+                <input
+                  type="text"
+                  value={inviteOrgName}
+                  onChange={e => setInviteOrgName(e.target.value)}
+                  placeholder="e.g. Sarah Jenkins"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-navy-700 bg-slate-50 dark:bg-navy-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-copper transition-all placeholder-slate-400 dark:placeholder-slate-550"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">Role inside Sub-Account</label>
+                <select
+                  value={inviteOrgRole}
+                  onChange={e => setInviteOrgRole(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-navy-700 bg-slate-50 dark:bg-navy-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-copper transition-all font-medium"
+                >
+                  <option value="admin">Administrator / Owner</option>
+                  <option value="sales_manager">Sales Manager</option>
+                  <option value="estimator">Estimator</option>
+                  <option value="technician">Field Technician</option>
+                  <option value="viewer">Viewer only</option>
+                </select>
+              </div>
+
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-xl text-[11px] text-blue-600 dark:text-blue-400">
+                <strong>Mechanism:</strong> Invites a user via magic-link. The updated trigger will check metadata to ensure this user bypasses new organization generation and attaches directly to **{inviteOrgTarget.name}** as an **{inviteOrgRole}**.
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={invitingOrgUser || !inviteOrgEmail.trim()}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-copper text-white text-sm font-bold hover:opacity-90 active:opacity-80 transition-all disabled:opacity-50"
+                >
+                  {invitingOrgUser ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {invitingOrgUser ? 'Sending invite...' : 'Send Magic Invitation'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowInviteOrgModal(false); setInviteOrgTarget(null); }}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-navy-700 text-sm font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-navy-800 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Sub-Account Feature Flags Modal ── */}
+      {showOrgFlagsModal && orgFlagsTarget && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-navy rounded-2xl shadow-2xl border border-app-border dark:border-navy-700 w-full max-w-lg p-6 space-y-5 animate-scale-in">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-sora font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                  <Flag className="w-4 h-4 text-copper" />
+                  Customize Feature Flags: {orgFlagsTarget.name}
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-inter">Toggle advanced capabilities for this sub-account instantly.</p>
+              </div>
+              <button
+                onClick={() => { setShowOrgFlagsModal(false); setOrgFlagsTarget(null); }}
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-navy-800 transition-colors"
+              >
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+
+            <div className="divide-y divide-app-border dark:divide-navy-850 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin font-inter">
+              {orgFlagsList.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-6">No feature flags registered for this organization.</p>
+              ) : (
+                orgFlagsList.map(flag => (
+                  <div key={flag.id} className="py-3 flex items-center justify-between gap-4">
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider font-mono">{flag.name}</span>
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-normal">{flag.description}</p>
+                    </div>
+                    <button
+                      onClick={() => handleToggleOrgFlag(flag.id, flag.enabled_globally)}
+                      className="text-slate-400 hover:text-copper transition-all"
+                    >
+                      {flag.enabled_globally ? (
+                        <ToggleRight className="w-8 h-8 text-copper" />
+                      ) : (
+                        <ToggleLeft className="w-8 h-8 text-slate-400 dark:text-navy-700" />
+                      )}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 font-inter">
+              <button
+                onClick={() => { setShowOrgFlagsModal(false); setOrgFlagsTarget(null); }}
+                className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-navy-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-navy-700 transition-all"
+              >
+                Close Features Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Sub-Account AI Usage Limits Modal ── */}
+      {showOrgLimitsModal && orgLimitsTarget && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-navy rounded-2xl shadow-2xl border border-app-border dark:border-navy-700 w-full max-w-md p-6 space-y-5 animate-scale-in">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-sora font-extrabold text-slate-900 dark:text-white text-base flex items-center gap-2">
+                  <Bot className="w-4 h-4 text-copper" />
+                  Manage AI Budget: {orgLimitsTarget.name}
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-inter">Control AI estimating and photo-scope credits (cents).</p>
+              </div>
+              <button
+                onClick={() => { setShowOrgLimitsModal(false); setOrgLimitsTarget(null); }}
+                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-navy-800 transition-colors"
+              >
+                <X className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveOrgAiLimits} className="space-y-4 font-inter">
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                  Monthly Limit (in Cents)
+                </label>
+                <div className="flex items-center">
+                  <span className="px-3 py-2.5 bg-slate-100 dark:bg-navy-950 border border-r-0 border-slate-200 dark:border-navy-700 rounded-l-xl text-xs font-semibold text-slate-500 font-mono">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    required
+                    value={orgLimitCents}
+                    onChange={e => setOrgLimitCents(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="flex-1 px-3.5 py-2.5 rounded-r-xl border border-slate-200 dark:border-navy-700 bg-slate-50 dark:bg-navy-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-copper transition-all"
+                  />
+                </div>
+                <p className="text-[9px] text-slate-400 mt-1">E.g., 500 cents = $5.00 limit. 2000 cents = $20.00 limit.</p>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                  Current Monthly Usage (in Cents)
+                </label>
+                <div className="flex items-center">
+                  <span className="px-3 py-2.5 bg-slate-100 dark:bg-navy-950 border border-r-0 border-slate-200 dark:border-navy-700 rounded-l-xl text-xs font-semibold text-slate-500 font-mono">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    required
+                    value={orgUsageCents}
+                    onChange={e => setOrgUsageCents(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="flex-1 px-3.5 py-2.5 rounded-r-xl border border-slate-200 dark:border-navy-700 bg-slate-50 dark:bg-navy-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-copper transition-all"
+                  />
+                </div>
+                <p className="text-[9px] text-slate-400 mt-1">Reset this to 0 to manually restore usage credits for the month.</p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={savingOrgLimits}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-copper text-white text-sm font-bold hover:opacity-90 active:opacity-80 transition-all disabled:opacity-50"
+                >
+                  {savingOrgLimits ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {savingOrgLimits ? 'Saving...' : 'Save Limits'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowOrgLimitsModal(false); setOrgLimitsTarget(null); }}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-navy-700 text-sm font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-navy-800 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
