@@ -46,9 +46,18 @@ export default function Dashboard() {
   useEffect(() => {
     fetchEvents();
 
+    // Org-scoped realtime — prevents cross-tenant event leakage
+    const channelName = `activity_events:${profile?.organization_id ?? profile?.id ?? 'anon'}`;
     const channel = supabase
-      .channel('public:activity_events')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_events' }, () => {
+      .channel(channelName)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'activity_events',
+        filter: profile?.organization_id
+          ? `organization_id=eq.${profile.organization_id}`
+          : `user_id=eq.${profile?.id}`,
+      }, () => {
         fetchEvents();
       })
       .subscribe();

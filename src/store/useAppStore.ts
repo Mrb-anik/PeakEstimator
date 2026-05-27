@@ -1,69 +1,114 @@
+/**
+ * useAppStore.ts — Global Zustand store.
+ *
+ * ARCHITECTURE NOTE:
+ * Auth state (session, user, profile) is now owned by AuthProvider.
+ * Organization state is owned by OrganizationProvider.
+ * This store retains:
+ *   - UI state (theme, sidebar, notifications)
+ *   - Legacy profile access for components not yet migrated to useAuth()
+ *   - Backward-compatible impersonation bridge (delegates to OrganizationProvider)
+ *
+ * MIGRATION PATH:
+ * Components should gradually move from:
+ *   useAppStore(s => s.profile)  → useAuth().profile
+ *   useAppStore(s => s.activeUserId()) → useOrganization().activeUserId
+ *
+ * The getters below remain functional during migration.
+ */
+
 import { create } from 'zustand';
 import type { Profile } from '../types';
 import { supabase } from '../api/supabase';
 
 interface AppState {
+  // ── Profile (kept for backward compat — prefer useAuth().profile) ──
   profile: Profile | null;
   loading: boolean;
-  // Agency masquerade — when set, the admin is "acting as" this user
-  impersonatedProfile: Profile | null;
   setProfile: (profile: Profile | null) => void;
   fetchProfile: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
-  // Agency Owner actions
+
+  // ── Legacy impersonation bridge ────────────────────────────────
+  // NOTE: New code should use OrganizationProvider.startImpersonation()
+  // These remain for backward compat with AdminPortal and useProjects
+  impersonatedProfile: Profile | null;
   startImpersonation: (target: Profile) => void;
   stopImpersonation: () => void;
-  /** The profile whose data is currently visible (impersonated if active, otherwise own) */
   activeProfile: () => Profile | null;
-  /** The user_id to scope DB queries to */
   activeUserId: () => string | null;
+
+  // ── UI state ────────────────────────────────────────────────────
+  sidebarCollapsed: boolean;
+  toggleSidebar: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
   profile: null,
   loading: false,
   impersonatedProfile: null,
+  sidebarCollapsed: false,
 
   setProfile: (profile) => set({ profile }),
 
   fetchProfile: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    set({ loading: true });
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+      set({ loading: true });
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    if (!error && data) {
-      set({ profile: data as Profile });
+      if (error) {
+        console.error('[useAppStore] fetchProfile error:', error.message);
+        return;
+      }
+      if (data) {
+        set({ profile: data as Profile });
+      }
+    } catch (err) {
+      console.error('[useAppStore] fetchProfile unexpected error:', err);
+    } finally {
+      set({ loading: false });
     }
-    set({ loading: false });
   },
 
   updateProfile: async (updates) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', user.id)
-      .select()
-      .single();
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+        .select()
+        .single();
 
-    if (!error && data) {
-      set({ profile: data as Profile });
+      if (error) {
+        console.error('[useAppStore] updateProfile error:', error.message);
+        return;
+      }
+      if (data) {
+        set({ profile: data as Profile });
+      }
+    } catch (err) {
+      console.error('[useAppStore] updateProfile unexpected error:', err);
     }
   },
 
+  // ── Impersonation ──────────────────────────────────────────────
   startImpersonation: (target: Profile) => {
+    // Immediately clear projects/data before setting new user
     set({ impersonatedProfile: target });
   },
 
   stopImpersonation: () => {
+    // Clear impersonation state atomically
     set({ impersonatedProfile: null });
   },
 
@@ -75,5 +120,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeUserId: () => {
     const { impersonatedProfile, profile } = get();
     return (impersonatedProfile ?? profile)?.id ?? null;
+  },
+
+  // ── UI ─────────────────────────────────────────────────────────
+  toggleSidebar: () => {
+    set(state => ({ sidebarCollapsed: !state.sidebarCollapsed }));
   },
 }));

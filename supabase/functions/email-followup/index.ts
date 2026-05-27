@@ -112,7 +112,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: `${companyName} <hello@peakeastimator.top>`,
+          from: `${companyName} <hello@peakestimator.top>`,
           to: [recipientEmail],
           subject: subject || `Reminder: Your Proposal for ${project.name}`,
           html: htmlContent,

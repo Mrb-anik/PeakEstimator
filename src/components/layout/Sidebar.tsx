@@ -144,7 +144,10 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
         {navItems
-          .filter(item => !(item.hideForAdmin && profile?.is_admin))
+          .filter(item => {
+            const isStaff = profile?.is_admin || profile?.role === 'platform_owner' || profile?.role === 'super_admin';
+            return !(item.hideForAdmin && isStaff);
+          })
           .map(({ path, label, icon: Icon }) => (
           <NavLink key={path} to={path} className={navLinkClass} onClick={() => setMobileOpen(false)}>
             {({ isActive }) => (
@@ -156,7 +159,7 @@ export default function Sidebar() {
           </NavLink>
         ))}
 
-        {profile?.is_admin && (
+        {(profile?.is_admin || profile?.role === 'platform_owner' || profile?.role === 'super_admin') && (
           <NavLink
             to="/admin"
             onClick={() => setMobileOpen(false)}

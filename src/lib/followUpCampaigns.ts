@@ -76,11 +76,9 @@ class FollowUpCampaignManager {
    * Initializes the event-driven subscribers for proposals
    */
   public initListeners(): void {
-    console.log('[CampaignManager] Initializing proposal event-driven listeners...');
 
     // 1. Client views proposal
     eventBus.on('proposal.viewed', async ({ projectId, viewedAt }) => {
-      console.log(`[CampaignManager] Proposal viewed event: ${projectId} at ${viewedAt}`);
       
       // Cancel previous general reminders (since they viewed it, we change the campaign track)
       await this.cancelFollowUpJobs(projectId, ['created-follow-up-1', 'created-follow-up-3']);
@@ -95,14 +93,12 @@ class FollowUpCampaignManager {
 
     // 2. Client approves proposal
     eventBus.on('proposal.approved', async ({ projectId, approvedAt }) => {
-      console.log(`[CampaignManager] Proposal approved event: ${projectId} at ${approvedAt}. Halting all campaigns.`);
       // Completely clear any outstanding follow-up campaigns for this project
       await this.cancelFollowUpJobs(projectId);
     });
 
     // 3. Client abandons workspace
     eventBus.on('proposal.abandoned', async ({ projectId, abandonedAt, reason }) => {
-      console.log(`[CampaignManager] Proposal abandoned: ${projectId} at ${abandonedAt}. Reason: ${reason}`);
       await this.cancelFollowUpJobs(projectId);
 
       const project = await this.fetchProjectDetails(projectId);
@@ -113,7 +109,6 @@ class FollowUpCampaignManager {
 
     // 4. Estimate expires
     eventBus.on('proposal.expired', async ({ projectId, expiredAt }) => {
-      console.log(`[CampaignManager] Proposal expired: ${projectId} at ${expiredAt}`);
       await this.cancelFollowUpJobs(projectId);
 
       const project = await this.fetchProjectDetails(projectId);
@@ -178,8 +173,6 @@ class FollowUpCampaignManager {
         ruleId: rule.id,
         subject: rule.subject,
       };
-
-      console.log(`[CampaignManager] Enqueuing campaign "${rule.name}" for project ${projectId} scheduled at ${scheduledTime.toISOString()}`);
       
       // Enqueue job via Job Queue
       await jobQueue.enqueue('email.follow-up', payload, scheduledTime.toISOString());
@@ -205,7 +198,6 @@ class FollowUpCampaignManager {
 
       for (const job of emailJobs) {
         await offlineDB.delete('jobs', job.id);
-        console.log(`[CampaignManager] Cancelled offline job: ${job.id} for project: ${projectId}`);
       }
 
       // 2. Cancel remote jobs in Supabase background_jobs
@@ -222,7 +214,6 @@ class FollowUpCampaignManager {
         if (error) {
           console.warn('[CampaignManager] Remote cancellation warning:', error);
         } else {
-          console.log(`[CampaignManager] Cancelled matching pending remote jobs for project ${projectId}`);
         }
       }
     } catch (err) {

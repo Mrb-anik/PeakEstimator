@@ -93,6 +93,14 @@ export default function WelcomeModal({ onClose }: WelcomeModalProps) {
         }
       });
 
+      // Sync organization table with company info
+      if (profile.organization_id) {
+        await supabase.from('organizations').update({
+          name: companyName || profile.company_name || 'My Organization',
+          updated_at: new Date().toISOString(),
+        }).eq('id', profile.organization_id);
+      }
+
       // Trigger Onboarding Complete event
       await triggerEvent({
         entityType: 'onboarding',

@@ -23,13 +23,13 @@ interface WaitlistItem {
 
 type AdminTab = 'members' | 'crm' | 'integrations' | 'support' | 'email_logs' | 'waitlist' | 'onboarding' | 'feature_flags' | 'ai_settings' | 'automation' | 'templates' | 'audit_logs' | 'revenue' | 'broadcast' | 'churn' | 'billing' | 'stripe' | 'pricebook_admin' | 'sub_accounts';
 
-export default function AdminPortal() {
+export default function AdminPortal({ initialTab }: { initialTab?: string } = {}) {
   const { triggerEvent } = useEventBus();
   const navigate = useNavigate();
   const { startImpersonation } = useAppStore();
   
   // Tabs
-  const [activeTab, setActiveTab] = useState<AdminTab>('members');
+  const [activeTab, setActiveTab] = useState<AdminTab>((initialTab as AdminTab) || 'members');
   
   // Data lists
   const [members, setMembers] = useState<Profile[]>([]);
@@ -1874,7 +1874,7 @@ Please assign an administrator immediately to prevent collision and address.`,
                         </td>
                         <td className="py-3.5 px-5 text-slate-600 dark:text-slate-300">{m.email}</td>
                         <td className="py-3.5 px-5">
-                          {m.is_admin ? (
+                          {(m.is_admin || m.role === 'platform_owner' || m.role === 'super_admin') ? (
                             <span className="bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400 px-2 py-0.5 border border-rose-100 dark:border-rose-900/30 rounded text-[9px] font-bold uppercase">Superadmin</span>
                           ) : (
                             <span className="bg-slate-100 text-slate-600 dark:bg-navy-900 dark:text-slate-300 px-2 py-0.5 rounded text-[9px] font-bold uppercase">{m.role || 'estimator'}</span>
@@ -1901,7 +1901,7 @@ Please assign an administrator immediately to prevent collision and address.`,
                         </td>
                         <td className="py-3.5 px-5 text-right">
                           <div className="flex items-center gap-1 justify-end">
-                            {!m.is_admin && (
+                            {!m.is_admin && m.role !== 'platform_owner' && (
                               <>
                                 {/* Agency Masquerade — Login As */}
                                 <button
@@ -3535,8 +3535,8 @@ Please assign an administrator immediately to prevent collision and address.`,
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Active Seats', value: members.filter(m => !m.is_admin).length, suffix: '', prefix: '', color: 'text-white', bg: 'bg-white dark:bg-navy', icon: Users },
-              { label: 'Est. MRR', value: members.filter(m => !m.is_admin).length * 99, suffix: '', prefix: '$', color: 'text-emerald-400', bg: 'bg-white dark:bg-navy', icon: DollarSign },
+              { label: 'Active Seats', value: members.filter(m => !m.is_admin && m.role !== 'platform_owner').length, suffix: '', prefix: '', color: 'text-white', bg: 'bg-white dark:bg-navy', icon: Users },
+              { label: 'Est. MRR', value: members.filter(m => !m.is_admin && m.role !== 'platform_owner').length * 99, suffix: '', prefix: '$', color: 'text-emerald-400', bg: 'bg-white dark:bg-navy', icon: DollarSign },
               { label: 'Waitlist', value: waitlist.length, suffix: ' pending', prefix: '', color: 'text-amber-400', bg: 'bg-white dark:bg-navy', icon: UserCheck },
               { label: 'Support Open', value: supportTickets.filter(t => t.status === 'open').length, suffix: '', prefix: '', color: 'text-rose-400', bg: 'bg-white dark:bg-navy', icon: HelpCircle },
             ].map(({ label, value, suffix, prefix, color, bg, icon: Icon }) => (
@@ -3565,7 +3565,7 @@ Please assign an administrator immediately to prevent collision and address.`,
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-navy-900 text-xs">
-                  {members.filter(m => !m.is_admin).map(m => (
+                  {members.filter(m => !m.is_admin && m.role !== 'platform_owner').map(m => (
                     <tr key={m.id} className="hover:bg-slate-50/50 dark:hover:bg-navy-950/30">
                       <td className="py-3 pr-4 font-bold text-slate-900 dark:text-white">{m.company_name || m.full_name || '—'}</td>
                       <td className="py-3 pr-4 text-slate-400">{m.email}</td>
@@ -4037,7 +4037,7 @@ Please assign an administrator immediately to prevent collision and address.`,
                             <div className="text-[10px] text-slate-400 font-mono mt-0.5">{org.id}</div>
                           </td>
                           <td className="py-4 px-5 text-slate-500 font-mono">
-                            {org.subdomain ? `${org.subdomain}.peakeastimator.top` : '—'}
+                            {org.subdomain ? `${org.subdomain}.peakestimator.top` : '—'}
                           </td>
                           <td className="py-4 px-5">
                             <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wide ${
@@ -4177,7 +4177,7 @@ Please assign an administrator immediately to prevent collision and address.`,
                     className="flex-1 px-3.5 py-2.5 rounded-l-xl border border-r-0 border-slate-200 dark:border-navy-700 bg-slate-50 dark:bg-navy-900 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-copper transition-all font-mono placeholder-slate-400 dark:placeholder-slate-550"
                   />
                   <span className="px-3 py-2.5 bg-slate-100 dark:bg-navy-950 border border-slate-200 dark:border-navy-700 rounded-r-xl text-[11px] font-semibold text-slate-500 font-mono">
-                    .peakeastimator.top
+                    .peakestimator.top
                   </span>
                 </div>
               </div>

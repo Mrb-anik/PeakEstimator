@@ -119,10 +119,11 @@ export default function Settings() {
 
   useEffect(() => {
     // Only load wire details for non-admin users
-    if (!profile?.is_admin) {
+    const isStaff = profile?.is_admin || profile?.role === 'platform_owner' || profile?.role === 'super_admin';
+    if (!isStaff) {
       fetchWireDetails();
     }
-  }, [profile?.is_admin]);
+  }, [profile?.is_admin, profile?.role]);
 
   useEffect(() => {
     if (profile?.id) {
@@ -167,6 +168,16 @@ export default function Settings() {
   const handleSaveProfile = async () => {
     setSavingProfile(true);
     await updateProfile({ ...profileForm, company_logo: logoUrl });
+
+    // Sync company name to organizations table (org owns the canonical name)
+    const orgId = profile?.organization_id;
+    if (orgId && profileForm.company_name) {
+      await supabase.from('organizations').update({
+        name: profileForm.company_name,
+        updated_at: new Date().toISOString(),
+      }).eq('id', orgId);
+    }
+
     toast.success('Profile saved!');
     setSavingProfile(false);
   };
@@ -201,18 +212,53 @@ export default function Settings() {
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // ── Validation ────────────────────────────────────────────────
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+    const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      toast.error('Invalid file type. Allowed formats: JPG, PNG, WebP, SVG');
+      e.target.value = '';
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      toast.error(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum is 5 MB.`);
+      e.target.value = '';
+      return;
+    }
+
     setUploadingLogo(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const ext = file.name.split('.').pop();
-    const path = `logos/${user.id}/company-logo.${ext}`;
-    const { error: uploadError } = await supabase.storage.from('company-logos').upload(path, file, { upsert: true });
-    if (uploadError) { toast.error('Logo upload failed: ' + uploadError.message); setUploadingLogo(false); return; }
-    const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(path);
-    setLogoUrl(publicUrl);
-    await updateProfile({ company_logo: publicUrl });
-    toast.success('Logo uploaded!');
-    setUploadingLogo(false);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error('Not authenticated'); setUploadingLogo(false); return; }
+
+      // Use org-scoped path when available
+      const { data: prof } = await supabase.from('profiles').select('organization_id').eq('id', user.id).single();
+      const scopeId = prof?.organization_id ?? user.id;
+      const ext = file.name.split('.').pop()?.toLowerCase() ?? 'png';
+      const path = `logos/${scopeId}/company-logo.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(path, file, { upsert: true, contentType: file.type });
+
+      if (uploadError) {
+        toast.error('Logo upload failed: ' + uploadError.message);
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage.from('company-logos').getPublicUrl(path);
+      setLogoUrl(publicUrl);
+      await updateProfile({ company_logo: publicUrl });
+      toast.success('Logo uploaded successfully!');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unexpected error during upload';
+      toast.error('Logo upload error: ' + msg);
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = '';
+    }
   };
 
   const handleWireSubmit = async () => {
@@ -266,7 +312,7 @@ export default function Settings() {
       </div>
 
       {/* ── ADMIN NOTICE (admin sees different billing section) ── */}
-      {profile?.is_admin && (
+      {(profile?.is_admin || profile?.role === 'platform_owner' || profile?.role === 'super_admin') && (
         <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-rose-950/20 border border-rose-700/30">
           <ShieldAlert className="w-5 h-5 text-rose-400 flex-shrink-0" />
           <div>
@@ -537,7 +583,7 @@ export default function Settings() {
       </div>
 
       {/* ── SUBSCRIPTION & WIRE TRANSFER (non-admin only) ── */}
-      {!profile?.is_admin && (
+      {!(profile?.is_admin || profile?.role === 'platform_owner' || profile?.role === 'super_admin') && (
         <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-navy-700 shadow-card bg-gradient-to-br from-slate-900 via-navy-900 to-slate-950 relative">
           <div className="absolute inset-0 opacity-[0.04] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-copper via-transparent to-transparent pointer-events-none" />
           <div className="absolute top-0 right-0 w-64 h-64 bg-copper/5 rounded-full blur-3xl pointer-events-none" />

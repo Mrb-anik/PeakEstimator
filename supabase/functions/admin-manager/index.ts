@@ -53,7 +53,7 @@ serve(async (req) => {
           organization_id: organizationId || '',
           role: role || 'admin',
         },
-        redirectTo: `${Deno.env.get("SITE_URL") || "https://peakeastimator.top"}/dashboard`,
+        redirectTo: `${Deno.env.get("SITE_URL") || "https://peakestimator.top"}/welcome`,
       });
 
       if (inviteErr) {

@@ -72,7 +72,9 @@ async function invokeFunction<TReq, TRes>(
       return { data: null, error: error.message };
     }
 
-    console.info(`[ApiClient] ${functionName} completed in ${Date.now() - start}ms`);
+    if (import.meta.env.DEV) {
+      console.info(`[ApiClient] ${functionName} completed in ${Date.now() - start}ms`);
+    }
     return { data: data ?? null, error: null };
   } catch (err: any) {
     const msg = err?.message ?? String(err);

@@ -266,7 +266,7 @@ export default function ClientPortal() {
         token: shareToken,
         signature: signatureDataUrl,
         message: message || '',
-        selected_tier: project.selected_option_tier || null,
+        selected_tier: project.selected_option_tier ?? project.selected_tier ?? null,
       });
 
     if (error || !approveSuccess) {
@@ -407,7 +407,7 @@ export default function ClientPortal() {
     );
   }
 
-  const activeTier = project?.selected_option_tier || 'better';
+  const activeTier = project?.selected_option_tier ?? project?.selected_tier ?? 'better';
 
   const visibleItems = project?.is_multi_option
     ? items.filter(item => !item.option_tier || item.option_tier === 'base' || item.option_tier === activeTier)

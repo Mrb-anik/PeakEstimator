@@ -1,7 +1,7 @@
 export type TradeType = 'electrical' | 'roofing' | 'hvac' | 'painting' | 'plumbing' | 'drain' | 'general' | 'other';
 export type StatusType = 'lead' | 'bidding' | 'sent' | 'approved' | 'won' | 'lost';
 export type CategoryType = 'material' | 'labor' | 'equipment' | 'other';
-export type UserRole = 'super_admin' | 'admin' | 'sales_manager' | 'estimator' | 'technician' | 'viewer';
+export type UserRole = 'platform_owner' | 'super_admin' | 'admin' | 'sales_manager' | 'estimator' | 'technician' | 'viewer';
 export type OptionTier = 'base' | 'good' | 'better' | 'best' | 'upsell';
 export type BillingTier = 'free' | 'pro' | 'enterprise';
 export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'pending_wire' | 'trialing' | 'suspended';
@@ -154,6 +154,8 @@ export interface Project {
   company_logo: string;
   is_multi_option?: boolean;
   selected_option_tier?: 'good' | 'better' | 'best' | null;
+  /** @deprecated Use selected_option_tier. Kept for backward compat. */
+  selected_tier?: 'good' | 'better' | 'best' | null;
   organization_id?: string;
   is_expired?: boolean;
   expiry_notified_at?: string | null;
@@ -219,18 +221,7 @@ export interface OrganizationSettings {
   updated_at: string;
 }
 
-export interface SystemSettings {
-  id: string;
-  financing_enabled: boolean;
-  financing_interest_rate: number;
-  financing_max_term_months: number;
-  financing_min_amount: number;
-  pricing_pro_monthly: number;
-  pricing_enterprise_monthly: number;
-  pricing_enterprise_setup: number;
-  pricing_annual_license: number;
-  updated_at: string;
-}
+// SystemSettings — see extended definition below (extends WireDetails)
 
 export interface AuditLog {
   id: string;

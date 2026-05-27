@@ -48,7 +48,7 @@ Generate between 4 and 10 line items. Use realistic market prices for the ${trad
       headers: {
         "Authorization": `Bearer ${openRouterKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": Deno.env.get("SITE_URL") || "https://peakeastimator.top",
+        "HTTP-Referer": Deno.env.get("SITE_URL") || "https://peakestimator.top",
         "X-Title": "PeakEstimator AI Estimator",
       },
       body: JSON.stringify({
@@ -79,6 +79,15 @@ Generate between 4 and 10 line items. Use realistic market prices for the ${trad
     const estimatedTotal = parsed.lineItems.reduce((acc: number, item: any) => {
       return acc + (item.quantity * item.unit_price * (1 + item.markup / 100));
     }, 0);
+
+    // ── Non-blocking usage metering ─────────────────────────────
+    if (tokensUsed > 0) {
+      // Fire and forget — don't block the response
+      supabaseClient.rpc('increment_ai_usage', {
+        org_id: userProfile?.organization_id ?? userId,
+        tokens_consumed: tokensUsed,
+      }).catch((e: unknown) => console.error('[ai-estimator] usage meter error:', e));
+    }
 
     return new Response(JSON.stringify({
       lineItems: parsed.lineItems,
