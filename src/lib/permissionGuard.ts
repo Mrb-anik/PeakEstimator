@@ -1,81 +1,115 @@
-/**
- * permissionGuard.ts
- * ─────────────────────────────────────────────────────────────────
- * Centralized RBAC — the single permission enforcement layer.
- *
- * ROLE HIERARCHY (highest → lowest):
- *   platform_owner → super_admin → admin → sales_manager → estimator → technician → viewer
- *
- * platform_owner: internal PeakEstimator staff only.
- *   - Identified by profiles.role = 'platform_owner'
- *   - NOT identified by profiles.is_admin — that field is deprecated
- *     for authorization purposes and kept only for backward compat
- *
- * Usage (React hook):
- *   const { can, role } = usePermissions();
- *   if (can('manage_feature_flags')) { ... }
- *
- * Usage (guard function, non-React):
- *   hasPermission(profile, 'edit_proposals')
- * ─────────────────────────────────────────────────────────────────
- */
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../api/supabase';
 
-// ─── Role types ────────────────────────────────────────────────────
-
 export type UserRole =
-  | 'platform_owner'   // PeakEstimator internal staff — all access
-  | 'super_admin'      // Legacy alias — treated as platform_owner
-  | 'admin'            // Organization owner / org admin
+  | 'platform_owner'
+  | 'super_admin'
+  | 'agency_admin'
+  | 'organization_owner'
+  | 'admin'
+  | 'manager'
   | 'sales_manager'
   | 'estimator'
+  | 'sales_rep'
   | 'technician'
   | 'viewer';
 
-// ─── Permission definitions ────────────────────────────────────────
-
 export type Permission =
-  // Proposals
+  | 'dashboard.view'
+  | 'organizations.view_all'
+  | 'organizations.manage'
+  | 'organizations.suspend'
+  | 'organizations.impersonate'
+  | 'organizations.clone'
+  | 'organizations.merge'
+  | 'organizations.export'
+  | 'users.view_all'
+  | 'users.manage'
+  | 'users.reset_passwords'
+  | 'users.force_mfa'
+  | 'users.force_logout'
+  | 'features.manage'
+  | 'features.lock'
+  | 'billing.view_all'
+  | 'billing.manage'
+  | 'billing.set_plans'
+  | 'audit.view_global'
+  | 'security.monitor_sessions'
+  | 'integrations.manage_global'
+  | 'white_label.manage'
+  | 'templates.push_global'
+  | 'pricing.push_presets'
+  | 'estimator.push_formulas'
+  | 'materials.push_database'
+  | 'labor.push_presets'
+  | 'analytics.view_global'
+  | 'system.monitor_health'
+  | 'api.manage_keys'
+  | 'api.manage_limits'
+  | 'ai.manage_quotas'
+  | 'crm.view'
+  | 'crm.manage'
+  | 'customers.manage'
+  | 'projects.view'
+  | 'projects.manage'
+  | 'estimates.view'
+  | 'estimates.create'
+  | 'estimates.update'
+  | 'estimates.delete'
+  | 'invoices.manage'
+  | 'scheduling.manage'
+  | 'automation.manage'
+  | 'files.manage'
+  | 'reports.view'
+  | 'settings.manage'
   | 'create_proposals'
   | 'edit_proposals'
   | 'delete_proposals'
   | 'send_proposals'
   | 'lock_proposals'
-  // Line items
   | 'edit_line_items'
-  // Price book
   | 'manage_price_book'
-  // Templates
   | 'use_templates'
   | 'manage_templates'
-  // AI
   | 'use_ai_scope'
   | 'manage_ai_limits'
-  // Analytics
   | 'view_analytics'
   | 'export_analytics'
-  // Team / org
   | 'invite_members'
   | 'manage_members'
   | 'manage_roles'
-  // Admin
   | 'manage_feature_flags'
   | 'view_audit_logs'
   | 'manage_system_settings'
   | 'manage_billing'
-  // Platform owner only
   | 'impersonate_users'
   | 'manage_all_organizations'
   | 'suspend_organizations'
   | 'access_platform_analytics'
-  // Field mode
   | 'use_field_mode';
 
-// ─── Permission matrix ─────────────────────────────────────────────
+const parentPermissions: Permission[] = [
+  'dashboard.view',
+  'organizations.view_all', 'organizations.manage', 'organizations.suspend', 'organizations.impersonate',
+  'organizations.clone', 'organizations.merge', 'organizations.export',
+  'users.view_all', 'users.manage', 'users.reset_passwords', 'users.force_mfa', 'users.force_logout',
+  'features.manage', 'features.lock',
+  'billing.view_all', 'billing.manage', 'billing.set_plans',
+  'audit.view_global', 'security.monitor_sessions',
+  'integrations.manage_global', 'white_label.manage',
+  'templates.push_global', 'pricing.push_presets', 'estimator.push_formulas', 'materials.push_database', 'labor.push_presets',
+  'analytics.view_global', 'system.monitor_health',
+  'api.manage_keys', 'api.manage_limits', 'ai.manage_quotas',
+  'manage_feature_flags', 'view_audit_logs', 'manage_system_settings', 'manage_billing',
+  'impersonate_users', 'manage_all_organizations', 'suspend_organizations', 'access_platform_analytics',
+];
 
-const ALL_PERMISSIONS = new Set<Permission>([
+const ownerPermissions: Permission[] = [
+  'dashboard.view', 'crm.view', 'crm.manage', 'customers.manage',
+  'projects.view', 'projects.manage',
+  'estimates.view', 'estimates.create', 'estimates.update', 'estimates.delete',
+  'invoices.manage', 'scheduling.manage', 'automation.manage', 'files.manage', 'reports.view', 'settings.manage',
+  'billing.manage',
   'create_proposals', 'edit_proposals', 'delete_proposals', 'send_proposals', 'lock_proposals',
   'edit_line_items',
   'manage_price_book',
@@ -83,40 +117,42 @@ const ALL_PERMISSIONS = new Set<Permission>([
   'use_ai_scope', 'manage_ai_limits',
   'view_analytics', 'export_analytics',
   'invite_members', 'manage_members', 'manage_roles',
-  'manage_feature_flags', 'view_audit_logs', 'manage_system_settings', 'manage_billing',
-  'impersonate_users', 'manage_all_organizations', 'suspend_organizations', 'access_platform_analytics',
+  'view_audit_logs',
+  'manage_billing',
   'use_field_mode',
+];
+
+const managerPermissions: Permission[] = [
+  'dashboard.view', 'crm.view', 'crm.manage', 'customers.manage',
+  'projects.view', 'projects.manage',
+  'estimates.view', 'estimates.create', 'estimates.update',
+  'scheduling.manage', 'automation.manage', 'files.manage', 'reports.view',
+  'create_proposals', 'edit_proposals', 'send_proposals', 'lock_proposals',
+  'edit_line_items',
+  'use_templates',
+  'use_ai_scope',
+  'view_analytics', 'export_analytics',
+  'invite_members',
+  'use_field_mode',
+];
+
+const ALL_PERMISSIONS = new Set<Permission>([
+  ...parentPermissions,
+  ...ownerPermissions,
+  'organizations.clone', 'organizations.merge', 'organizations.export',
 ]);
 
 const ROLE_PERMISSIONS: Record<UserRole, Set<Permission>> = {
   platform_owner: ALL_PERMISSIONS,
-
-  super_admin: ALL_PERMISSIONS, // Backward compat alias
-
-  admin: new Set<Permission>([
-    'create_proposals', 'edit_proposals', 'delete_proposals', 'send_proposals', 'lock_proposals',
-    'edit_line_items',
-    'manage_price_book',
-    'use_templates', 'manage_templates',
-    'use_ai_scope', 'manage_ai_limits',
-    'view_analytics', 'export_analytics',
-    'invite_members', 'manage_members', 'manage_roles',
-    'view_audit_logs',
-    'manage_billing',
-    'use_field_mode',
-  ]),
-
-  sales_manager: new Set<Permission>([
-    'create_proposals', 'edit_proposals', 'send_proposals', 'lock_proposals',
-    'edit_line_items',
-    'use_templates',
-    'use_ai_scope',
-    'view_analytics', 'export_analytics',
-    'invite_members',
-    'use_field_mode',
-  ]),
-
+  super_admin: ALL_PERMISSIONS,
+  agency_admin: new Set(parentPermissions),
+  organization_owner: new Set(ownerPermissions),
+  admin: new Set(ownerPermissions),
+  manager: new Set(managerPermissions),
+  sales_manager: new Set(managerPermissions),
   estimator: new Set<Permission>([
+    'dashboard.view', 'projects.view',
+    'estimates.view', 'estimates.create', 'estimates.update',
     'create_proposals', 'edit_proposals', 'send_proposals',
     'edit_line_items',
     'use_templates',
@@ -124,36 +160,47 @@ const ROLE_PERMISSIONS: Record<UserRole, Set<Permission>> = {
     'view_analytics',
     'use_field_mode',
   ]),
-
+  sales_rep: new Set<Permission>([
+    'dashboard.view', 'crm.view', 'crm.manage', 'customers.manage',
+    'projects.view', 'estimates.view', 'estimates.create',
+    'create_proposals', 'send_proposals',
+    'use_templates',
+    'view_analytics',
+  ]),
   technician: new Set<Permission>([
+    'dashboard.view', 'projects.view', 'estimates.view',
     'use_field_mode',
     'view_analytics',
   ]),
-
   viewer: new Set<Permission>([
+    'dashboard.view', 'projects.view', 'estimates.view', 'reports.view',
     'view_analytics',
   ]),
 };
 
-// ─── Role rank ─────────────────────────────────────────────────────
-
 export const ROLE_RANK: Record<UserRole, number> = {
-  platform_owner: 7,
-  super_admin: 6,
-  admin: 5,
-  sales_manager: 4,
+  platform_owner: 10,
+  super_admin: 9,
+  agency_admin: 8,
+  organization_owner: 7,
+  admin: 7,
+  manager: 5,
+  sales_manager: 5,
   estimator: 3,
+  sales_rep: 3,
   technician: 2,
   viewer: 1,
 };
 
-// ─── Pure guard functions ──────────────────────────────────────────
-
 export function hasPermission(
   role: UserRole | null | undefined,
-  permission: Permission
+  permission: Permission,
+  overrides?: Record<string, boolean> | null,
+  parentRestrictions?: Record<string, boolean> | null,
 ): boolean {
   if (!role) return false;
+  if (parentRestrictions?.[permission] === false) return false;
+  if (typeof overrides?.[permission] === 'boolean') return overrides[permission];
   return ROLE_PERMISSIONS[role]?.has(permission) ?? false;
 }
 
@@ -165,17 +212,13 @@ export function isAtLeastRole(
   return (ROLE_RANK[role] ?? 0) >= ROLE_RANK[minimum];
 }
 
-/** Returns true if the role can access the admin portal */
 export function isPlatformStaff(role: UserRole | null | undefined): boolean {
-  return role === 'platform_owner' || role === 'super_admin';
+  return role === 'platform_owner' || role === 'super_admin' || role === 'agency_admin';
 }
 
-/** Returns true if the role can manage their own organization */
 export function isOrgAdmin(role: UserRole | null | undefined): boolean {
-  return isAtLeastRole(role, 'admin');
+  return role === 'organization_owner' || role === 'admin' || role === 'platform_owner' || role === 'super_admin';
 }
-
-// ─── React hook ────────────────────────────────────────────────────
 
 export interface PermissionState {
   role: UserRole | null;
@@ -186,18 +229,6 @@ export interface PermissionState {
   isOrgAdmin: boolean;
 }
 
-/**
- * React hook that reads the current user's role from Supabase profiles
- * and exposes a typed `can()` helper for UI permission gating.
- *
- * Prefers reading from the AuthProvider profile if available to avoid
- * an extra DB call. Falls back to a direct query if needed.
- *
- * @example
- * const { can, isAtLeast } = usePermissions();
- * {can('manage_feature_flags') && <FeatureFlagsPanel />}
- * {isAtLeast('admin') && <OrgSettings />}
- */
 export function usePermissions(): PermissionState {
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
@@ -227,9 +258,7 @@ export function usePermissions(): PermissionState {
       if (error || !profile) {
         setRole('viewer');
       } else {
-        // Backward compat: if no role but is_admin = true, treat as admin
-        const resolvedRole = profile.role ??
-          (profile.is_admin ? 'admin' : 'viewer');
+        const resolvedRole = profile.role ?? (profile.is_admin ? 'organization_owner' : 'viewer');
         setRole(resolvedRole as UserRole);
       }
     } catch (err) {

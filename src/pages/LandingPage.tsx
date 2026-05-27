@@ -1,1267 +1,589 @@
-import { useState, useEffect, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowRight, CheckCircle, X, Zap, Star, Shield,
-  ChevronRight, Play, TrendingUp, Clock, Smartphone,
-  FileText, Users, Award, BarChart3, Camera, Hammer,
-  MousePointer, Pen, Trophy, Plus, Minus, Bell
+  ArrowRight, BarChart3, Building2, CheckCircle, ChevronRight, Clock,
+  DollarSign, FileText, Gauge, Layers, LineChart, Mail, Phone,
+  Search, Shield, Target, Users, Workflow, Zap,
 } from 'lucide-react';
-import { supabase } from '../api/supabase';
 import { toast } from 'sonner';
+import { supabase } from '../api/supabase';
 
-/* ─── Brand Logo ─────────────────────────────────────────────── */
-function PeakLogo({ size = 36 }: { size?: number }) {
+type AuditStep = 0 | 1 | 2 | 3;
+
+type AuditForm = {
+  company_name: string;
+  owner_name: string;
+  email: string;
+  phone: string;
+  team_size: string;
+  annual_revenue_range: string;
+  service_area: string;
+  trade_type: string;
+  estimates_per_month: number;
+  average_project_size: number;
+  average_close_rate: number;
+  average_response_time_hours: number;
+  follow_up_process: string;
+  estimator_count: number;
+  office_staff_count: number;
+  lost_leads_per_month: number;
+  delayed_estimates_per_month: number;
+  inconsistent_pricing_issues: string;
+  missed_follow_ups_per_month: number;
+  callback_delay_hours: number;
+  manual_processes: string;
+  estimating_time_hours: number;
+  current_crm: string;
+  estimating_software: string;
+  scheduling_tools: string;
+  invoicing_tools: string;
+  spreadsheet_usage: string;
+  manual_workflows: string;
+};
+
+const initialForm: AuditForm = {
+  company_name: '',
+  owner_name: '',
+  email: '',
+  phone: '',
+  team_size: '2-5',
+  annual_revenue_range: '$500k-$1M',
+  service_area: '',
+  trade_type: 'general',
+  estimates_per_month: 40,
+  average_project_size: 8500,
+  average_close_rate: 28,
+  average_response_time_hours: 24,
+  follow_up_process: 'manual',
+  estimator_count: 1,
+  office_staff_count: 1,
+  lost_leads_per_month: 6,
+  delayed_estimates_per_month: 8,
+  inconsistent_pricing_issues: 'sometimes',
+  missed_follow_ups_per_month: 10,
+  callback_delay_hours: 8,
+  manual_processes: 'spreadsheets, texts, phone calls',
+  estimating_time_hours: 3,
+  current_crm: '',
+  estimating_software: '',
+  scheduling_tools: '',
+  invoicing_tools: '',
+  spreadsheet_usage: 'daily',
+  manual_workflows: '',
+};
+
+function PeakLogo({ size = 34 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect width="64" height="64" rx="12" fill="#0F172A"/>
-      <polygon points="32,8 6,56 58,56" fill="none" stroke="#C58B5C" strokeWidth="2.5" strokeLinejoin="round"/>
+      <polygon points="32,8 6,56 58,56" fill="none" stroke="#38BDF8" strokeWidth="2.5" strokeLinejoin="round"/>
       <polyline points="18,50 26,28 32,40 38,28 46,50" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-      <line x1="36" y1="16" x2="52" y2="30" stroke="#C58B5C" strokeWidth="2.5" strokeLinecap="round"/>
-      <circle cx="52" cy="30" r="3" fill="#C58B5C"/>
+      <line x1="36" y1="16" x2="52" y2="30" stroke="#38BDF8" strokeWidth="2.5" strokeLinecap="round"/>
+      <circle cx="52" cy="30" r="3" fill="#38BDF8"/>
     </svg>
   );
 }
 
-/* ─── Animated Counter ───────────────────────────────────────── */
-function AnimatedCounter({ target, suffix = '', prefix = '' }: { target: number; suffix?: string; prefix?: string }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const started = useRef(false);
+function calculateAudit(form: AuditForm) {
+  const monthlyEstimateValue = form.estimates_per_month * form.average_project_size;
+  const currentWonRevenue = monthlyEstimateValue * (form.average_close_rate / 100);
+  const recoveredFollowUpRevenue = form.missed_follow_ups_per_month * form.average_project_size * 0.18;
+  const recoveredLostLeadRevenue = form.lost_leads_per_month * form.average_project_size * 0.22;
+  const closeRateLiftRevenue = monthlyEstimateValue * 0.07;
+  const annualRecoverableRevenue = Math.round((recoveredFollowUpRevenue + recoveredLostLeadRevenue + closeRateLiftRevenue) * 12);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !started.current) {
-        started.current = true;
-        const duration = 1800;
-        const steps = 60;
-        const increment = target / steps;
-        let current = 0;
-        const timer = setInterval(() => {
-          current += increment;
-          if (current >= target) { setCount(target); clearInterval(timer); }
-          else setCount(Math.floor(current));
-        }, duration / steps);
-      }
-    }, { threshold: 0.5 });
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [target]);
+  const responsePenalty = Math.min(35, form.average_response_time_hours * 1.15);
+  const followUpPenalty = form.follow_up_process === 'automated' ? 4 : form.follow_up_process === 'structured' ? 12 : 28;
+  const estimatingPenalty = Math.min(25, form.estimating_time_hours * 4);
+  const leakagePenalty = Math.min(25, form.lost_leads_per_month + form.missed_follow_ups_per_month);
 
-  return <span ref={ref}>{prefix}{count}{suffix}</span>;
+  const efficiencyScore = Math.max(14, Math.round(100 - responsePenalty - estimatingPenalty));
+  const followUpScore = Math.max(8, Math.round(100 - followUpPenalty - form.missed_follow_ups_per_month * 2));
+  const scalabilityScore = Math.max(10, Math.round(100 - leakagePenalty - (form.spreadsheet_usage === 'daily' ? 18 : 6)));
+  const maturityScore = Math.round((efficiencyScore + followUpScore + scalabilityScore) / 3);
+  const leadScore = Math.min(100, Math.round((annualRecoverableRevenue / 5000) + (100 - maturityScore) * 0.45 + form.estimates_per_month * 0.4));
+  const urgencyScore = Math.min(100, Math.round(form.lost_leads_per_month * 5 + form.missed_follow_ups_per_month * 4 + form.average_response_time_hours * 0.7));
+  const growthPotentialScore = Math.min(100, Math.round((monthlyEstimateValue / 10000) + (100 - form.average_close_rate) * 0.6));
+
+  return {
+    currentWonRevenue: Math.round(currentWonRevenue),
+    annualRecoverableRevenue,
+    efficiencyScore,
+    followUpScore,
+    scalabilityScore,
+    maturityScore,
+    leadScore,
+    urgencyScore,
+    growthPotentialScore,
+    estimatedDealValue: annualRecoverableRevenue > 400000 ? 10000 : annualRecoverableRevenue > 175000 ? 5000 : 1500,
+    qualificationStatus: leadScore >= 75 ? 'Qualified' : leadScore >= 50 ? 'Nurture' : 'Research',
+  };
 }
 
-function ProposalSimulator() {
-  const [selectedTier, setSelectedTier] = useState<'good' | 'better' | 'best'>('better');
-  const [upsell1, setUpsell1] = useState(false);
-  const [upsell2, setUpsell2] = useState(false);
-  const [showFinancing, setShowFinancing] = useState(false);
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-
-  interface SimulatorTier {
-    label: string;
-    price: number;
-    color: string;
-    ring: string;
-    desc: string;
-    popular?: boolean;
-  }
-
-  const tiers: Record<'good' | 'better' | 'best', SimulatorTier> = {
-    good:   { label: 'Good',   price: 8800,  color: 'from-slate-600 to-slate-800',   ring: 'ring-slate-400', desc: 'Essential coverage, standard materials' },
-    better: { label: 'Better', price: 13500, color: 'from-amber-600 to-orange-700',  ring: 'ring-amber-400', desc: 'Premium materials + 5-yr warranty', popular: true },
-    best:   { label: 'Best',   price: 19800, color: 'from-violet-600 to-indigo-700', ring: 'ring-violet-400', desc: 'Elite materials + 10-yr + priority service' },
-  };
-
-  // Auto-cycle options when idle to showcase interactivity
-  useEffect(() => {
-    if (!isAutoPlaying) return;
-
-    const interval = setInterval(() => {
-      setSelectedTier(prev => {
-        if (prev === 'good') return 'better';
-        if (prev === 'better') return 'best';
-        return 'good';
-      });
-      // Toggle upsells randomly
-      setUpsell1(prev => !prev);
-      if (Math.random() > 0.5) {
-        setUpsell2(prev => !prev);
-      }
-      // Toggle financing view
-      setShowFinancing(prev => !prev);
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [isAutoPlaying]);
-
-  const selectTierManual = (tier: 'good' | 'better' | 'best') => {
-    setIsAutoPlaying(false);
-    setSelectedTier(tier);
-  };
-
-  const toggleUpsell1Manual = () => {
-    setIsAutoPlaying(false);
-    setUpsell1(prev => !prev);
-  };
-
-  const toggleUpsell2Manual = () => {
-    setIsAutoPlaying(false);
-    setUpsell2(prev => !prev);
-  };
-
-  const toggleFinancingManual = () => {
-    setIsAutoPlaying(false);
-    setShowFinancing(prev => !prev);
-  };
-
-  const base = tiers[selectedTier].price;
-  const total = base + (upsell1 ? 1200 : 0) + (upsell2 ? 2400 : 0);
-  const monthly = Math.round((total * (1 + (9.99 / 100 / 12) * 60) / 60));
-
-  return (
-    <div className="w-full max-w-lg mx-auto bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-2xl transition-all duration-500">
-      {/* Proposal header */}
-      <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-copper/20 flex items-center justify-center">
-            <PeakLogo size={20} />
-          </div>
-          <div>
-            <div className="text-white text-xs font-bold font-sora">Smith Electric LLC</div>
-            <div className="text-white/40 text-[10px]">Panel Upgrade Proposal · 3 options</div>
-          </div>
-        </div>
-        <div className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-full font-semibold flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-          {isAutoPlaying ? 'Demo Mode' : 'Live Interactive'}
-        </div>
-      </div>
-
-      {/* Tier selector */}
-      <div className="p-4 grid grid-cols-3 gap-2">
-        {(Object.entries(tiers) as [keyof typeof tiers, SimulatorTier][]).map(([key, t]) => (
-          <button
-            key={key}
-            onClick={() => selectTierManual(key)}
-            className={`relative rounded-2xl p-3 border-2 transition-all duration-300 text-left ${
-              selectedTier === key
-                ? `bg-gradient-to-br ${t.color} border-transparent shadow-lg scale-[1.04]`
-                : 'bg-white/5 border-white/10 hover:border-white/20'
-            }`}
-          >
-            {'popular' in t && t.popular && (
-              <div className={`absolute -top-2.5 left-1/2 -translate-x-1/2 bg-amber-400 text-amber-900 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider whitespace-nowrap transition-opacity duration-300 ${selectedTier === key ? 'opacity-100' : 'opacity-40'}`}>
-                ⭐ Popular
-              </div>
-            )}
-            <div className="text-white font-bold text-xs font-sora">{t.label}</div>
-            <div className="text-white/70 font-extrabold text-sm font-sora mt-0.5">
-              ${t.price.toLocaleString()}
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {/* Description */}
-      <div className="px-4 pb-3 h-10 overflow-hidden">
-        <p className="text-white/50 text-[11px] font-inter transition-all duration-300">{tiers[selectedTier].desc}</p>
-      </div>
-
-      {/* Upsells */}
-      <div className="px-4 pb-3 space-y-2">
-        <div className="text-[10px] text-white/40 uppercase tracking-wider font-bold mb-1">Optional Add-ons</div>
-        {[
-          { label: 'Surge Protection Package', price: 1200, state: upsell1, toggle: toggleUpsell1Manual },
-          { label: 'Extended 10-Year Warranty', price: 2400, state: upsell2, toggle: toggleUpsell2Manual },
-        ].map(u => (
-          <button
-            key={u.label}
-            onClick={u.toggle}
-            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left ${
-              u.state
-                ? 'bg-copper/20 border-copper/40 text-white'
-                : 'bg-white/5 border-white/10 hover:border-white/20 text-white/60'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <div className={`w-4 h-4 rounded-md border-2 flex items-center justify-center transition-colors ${u.state ? 'bg-copper border-copper' : 'border-white/30'}`}>
-                {u.state && <CheckCircle className="w-3 h-3 text-white" />}
-              </div>
-              <span className="text-xs font-medium">{u.label}</span>
-            </div>
-            <span className="text-xs font-bold text-copper">+${u.price.toLocaleString()}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Total & financing */}
-      <div className="mx-4 mb-4 p-4 rounded-2xl bg-white/5 border border-white/10">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-white/60 text-xs">Total Investment</span>
-          <button
-            onClick={toggleFinancingManual}
-            className="text-[10px] text-copper hover:text-copper/80 font-semibold transition-colors"
-          >
-            {showFinancing ? 'Show total' : '💳 Show monthly'}
-          </button>
-        </div>
-        {showFinancing ? (
-          <div className="transition-all duration-300">
-            <div className="text-2xl font-extrabold text-white font-sora">${monthly}/mo</div>
-            <div className="text-white/40 text-[10px] mt-0.5">60 months @ 9.99% APR · Total ${total.toLocaleString()}</div>
-          </div>
-        ) : (
-          <div className="text-2xl font-extrabold text-white font-sora transition-all duration-300">${total.toLocaleString()}</div>
-        )}
-        <button
-          onClick={() => {
-            setIsAutoPlaying(false);
-            toast.success("Demo proposal approved successfully!");
-          }}
-          className="mt-3 w-full py-2.5 bg-copper hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5"
-        >
-          <Pen className="w-3.5 h-3.5" /> Approve & Sign Now
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Main Component ─────────────────────────────────────────── */
 export default function LandingPage() {
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [trade, setTrade] = useState('');
+  const [form, setForm] = useState<AuditForm>(initialForm);
+  const [step, setStep] = useState<AuditStep>(0);
   const [submitting, setSubmitting] = useState(false);
-  const [joined, setJoined] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [showDemoModal, setShowDemoModal] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const result = useMemo(() => calculateAudit(form), [form]);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  // Load Cal.com embed script dynamically
-  useEffect(() => {
-    (function (C: any, A: string) {
-      let p = function (a: any, ar: any) { a.q.push(ar); };
-      let c = C.document; C.Cal = C.Cal || function () {
-        let a = arguments;
-        if (!a.length) return;
-        let s = c.createElement("script");
-        s.src = "https://embed.cal.com/embed/embed.js";
-        c.head.appendChild(s);
-        C.Cal = function () { let a = arguments; p(C.Cal, a); };
-        p(C.Cal, a);
-      };
-    })(window as any, "cal");
-  }, []);
-
-  // Initialize Cal.com inline booking after waitlist signup
-  useEffect(() => {
-    if (joined) {
-      const timer = setTimeout(() => {
-        const cal = (window as any).Cal;
-        if (cal) {
-          cal("inline", {
-            elementOrSelector: "#cal-booking-embed",
-            calLink: import.meta.env.VITE_CAL_BOOKING_LINK || "peakestimator/30min",
-            config: {
-              name: name,
-              email: email,
-              notes: `Trade selected: ${trade || 'Not specified'}`
-            },
-            styles: {
-              branding: {
-                brandColor: "#C58B5C" // Match copper theme
-              }
-            }
-          });
-          cal("ui", {
-            styles: { branding: { brandColor: "#C58B5C" } },
-            hideEventTypeDetails: false,
-            layout: "month_view"
-          });
-        }
-      }, 200);
-      return () => clearTimeout(timer);
-    }
-  }, [joined, name, email, trade]);
-
-  const handleWaitlist = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setSubmitting(true);
-    const { error } = await supabase.from('waitlist').insert({
-      email: email.trim().toLowerCase(),
-      name: name.trim() || null,
-      trade: trade || null,
-    });
-    if (error) {
-      if (error.code === '23505') { toast.info("You're already on the list!"); setJoined(true); }
-      else toast.error('Something went wrong. Please try again.');
-    } else {
-      setJoined(true);
-      toast.success("You're on the list! We'll reach out personally.");
-    }
-    setSubmitting(false);
+  const update = <K extends keyof AuditForm>(key: K, value: AuditForm[K]) => {
+    setForm(prev => ({ ...prev, [key]: value }));
   };
 
+  const submitAudit = async () => {
+    if (!form.company_name || !form.owner_name || !form.email) {
+      toast.error('Company, owner, and email are required for the Revenue Audit.');
+      setStep(0);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const auditId = crypto.randomUUID();
+      const { error } = await supabase
+        .from('revenue_audits')
+        .insert({
+          id: auditId,
+          ...form,
+          estimated_lost_revenue: result.annualRecoverableRevenue,
+          projected_revenue_recovery: result.annualRecoverableRevenue,
+          qualification_status: result.qualificationStatus,
+          source: 'landing_page',
+        });
+
+      if (error) throw error;
+
+      await Promise.all([
+        supabase.from('audit_scores').insert({
+          revenue_audit_id: auditId,
+          efficiency_score: result.efficiencyScore,
+          follow_up_score: result.followUpScore,
+          scalability_score: result.scalabilityScore,
+          operational_maturity_score: result.maturityScore,
+          lead_score: result.leadScore,
+          urgency_score: result.urgencyScore,
+          growth_potential_score: result.growthPotentialScore,
+          estimated_deal_value: result.estimatedDealValue,
+        }),
+        supabase.from('lead_pipeline').insert({
+          revenue_audit_id: auditId,
+          stage: 'New Audit',
+          projected_revenue_value: result.annualRecoverableRevenue,
+          qualification_status: result.qualificationStatus,
+        }),
+        supabase.from('contacts').insert({
+          revenue_audit_id: auditId,
+          company_name: form.company_name,
+          full_name: form.owner_name,
+          email: form.email,
+          phone: form.phone,
+          contact_type: 'revenue_audit_lead',
+        }),
+      ]);
+
+      setSubmitted(true);
+      toast.success('Revenue Audit generated.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to submit Revenue Audit';
+      toast.error(message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const numberInput = (key: keyof AuditForm, label: string, prefix = '', suffix = '') => (
+    <label className="block">
+      <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</span>
+      <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-3 focus-within:border-sky-400">
+        {prefix && <span className="text-xs font-bold text-slate-400">{prefix}</span>}
+        <input
+          type="number"
+          value={Number(form[key])}
+          onChange={event => update(key as any, Number(event.target.value) as any)}
+          className="min-w-0 flex-1 bg-transparent py-3 text-sm font-bold text-white outline-none"
+        />
+        {suffix && <span className="text-xs font-bold text-slate-400">{suffix}</span>}
+      </div>
+    </label>
+  );
+
   return (
-    <div className="min-h-screen bg-[#060B14] text-white font-inter overflow-x-hidden scroll-smooth selection:bg-copper/20 selection:text-copper">
-
-      {/* ── SEO Meta (injected by index.html) ── */}
-
-      {/* ── NAV ──────────────────────────────────────────────── */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled ? 'bg-[#060B14]/90 border-b border-white/5 backdrop-blur-xl shadow-2xl' : 'bg-transparent'
-      }`}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-            <PeakLogo size={32} />
-            <span className="font-sora font-bold text-base text-white hidden sm:block">
-              Peak<span className="text-copper">Estimator</span>
-            </span>
+    <div className="min-h-screen bg-[#050914] text-white selection:bg-sky-400/20 selection:text-sky-200">
+      <nav className="sticky top-0 z-50 border-b border-white/10 bg-[#050914]/88 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
+          <Link to="/" className="flex items-center gap-2.5">
+            <PeakLogo />
+            <div>
+              <div className="font-sora text-sm font-black tracking-tight">Peak<span className="text-sky-400">Estimator</span></div>
+              <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-slate-500">Revenue Infrastructure</div>
+            </div>
           </Link>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Link
-              to="/login"
-              className="text-sm text-white/60 hover:text-white transition-colors px-3 py-2 hidden sm:block"
-            >
+          <div className="flex items-center gap-2">
+            <Link to="/login" className="hidden rounded-xl px-3 py-2 text-sm font-bold text-slate-400 transition hover:text-white sm:block">
               Sign In
             </Link>
-            <button
-              onClick={() => setShowDemoModal(true)}
-              className="bg-copper hover:bg-amber-600 text-white text-sm font-bold px-4 py-2 rounded-xl transition-all shadow-lg hover:-translate-y-0.5 active:translate-y-0 flex items-center gap-1.5"
-            >
-              Book Demo <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <a href="#revenue-audit" className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-4 py-2 text-sm font-black text-white shadow-lg shadow-sky-500/20 transition hover:bg-sky-400">
+              Get Revenue Audit <ArrowRight className="h-4 w-4" />
+            </a>
           </div>
         </div>
       </nav>
 
-      {/* ── HERO ─────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
-        {/* Background layers */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#060B14] via-[#0D1526] to-[#060B14]" />
-          <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-copper/8 rounded-full blur-[120px] pointer-events-none" />
-          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-indigo-500/8 rounded-full blur-[100px] pointer-events-none" />
-          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '28px 28px' }} />
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 w-full py-20 lg:py-32">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Copy */}
+      <main>
+        <section className="relative overflow-hidden border-b border-white/10">
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(14,165,233,0.18),transparent_34%),linear-gradient(180deg,#050914,#0b1220)]" />
+          <div className="absolute inset-0 opacity-[0.08]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.12) 1px, transparent 1px)', backgroundSize: '44px 44px' }} />
+          <div className="relative mx-auto grid min-h-[calc(100vh-64px)] max-w-7xl items-center gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[0.95fr_1.05fr] lg:py-20">
             <div>
-              <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-[11px] font-semibold text-copper uppercase tracking-widest mb-8">
-                <Zap className="w-3 h-3" /> Modern Proposal Platform for Contractors
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-sky-400/25 bg-sky-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-sky-300">
+                <LineChart className="h-3.5 w-3.5" />
+                Contractor Revenue Infrastructure
               </div>
-
-              <h1 className="text-4xl sm:text-5xl xl:text-6xl font-sora font-extrabold leading-[1.08] tracking-tight mb-6 animate-slide-up">
-                Win More Jobs With<br />
-                <span className="bg-gradient-to-r from-copper to-amber-400 bg-clip-text text-transparent">
-                  Modern Proposals.
-                </span>
+              <h1 className="font-sora text-4xl font-black leading-[1.02] tracking-tight sm:text-5xl xl:text-6xl">
+                The Revenue Operating System Built for Contractors.
               </h1>
-
-              <p className="text-lg sm:text-xl text-amber-400/90 font-bold leading-relaxed max-w-xl mb-4 font-sora border-l-2 border-copper/50 pl-4 italic">
-                “Stop sending estimates that look like invoices.”
+              <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+                From lead to signed job in one platform: pipeline, estimating, proposal analytics, follow-up automation, CRM, and margin intelligence built to recover lost revenue and make contractors more money.
               </p>
-
-              <p className="text-sm sm:text-base text-white/55 leading-relaxed max-w-xl mb-8">
-                Create beautiful estimates, present Good&nbsp;/&nbsp;Better&nbsp;/&nbsp;Best options, and deliver a homeowner experience that closes jobs faster — before you leave the driveway.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-3.5 mb-10">
-                <a
-                  href="#simulator"
-                  id="hero-view-proposal-btn"
-                  className="inline-flex items-center justify-center gap-2.5 bg-copper hover:bg-amber-600 text-white font-bold text-base px-8 py-4 rounded-xl transition-all shadow-xl shadow-copper/20 hover:-translate-y-0.5 active:translate-y-0"
-                >
-                  <Play className="w-4 h-4 text-white fill-white shrink-0" /> See Interactive Proposal
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <a href="#revenue-audit" className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-500 px-7 py-4 text-base font-black text-white shadow-xl shadow-sky-500/20 transition hover:bg-sky-400">
+                  Get Revenue Audit <ArrowRight className="h-5 w-5" />
                 </a>
-                <button
-                  id="hero-book-demo-btn"
-                  onClick={() => setShowDemoModal(true)}
-                  className="inline-flex items-center justify-center gap-2 bg-white/8 hover:bg-white/12 text-white font-bold text-base px-8 py-4 rounded-xl border border-white/10 transition-all hover:-translate-y-0.5 active:translate-y-0"
-                >
-                  Book Demo <ArrowRight className="w-5 h-5 text-copper shrink-0" />
-                </button>
+                <a href="#leaks" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-7 py-4 text-base font-black text-white transition hover:border-sky-400/50 hover:bg-sky-500/10">
+                  See Your Revenue Leakage
+                </a>
               </div>
+              <div className="mt-8 grid grid-cols-3 gap-3 max-w-xl">
+                {[
+                  ['+18%', 'Close-rate lift'],
+                  ['72%', 'Faster follow-up'],
+                  ['$214K', 'Typical recovery'],
+                ].map(([value, label]) => (
+                  <div key={label} className="rounded-xl border border-white/10 bg-white/[0.05] p-3 backdrop-blur">
+                    <div className="font-sora text-xl font-black text-sky-300">{value}</div>
+                    <div className="mt-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-              {/* Social proof */}
-              <div className="flex items-center gap-3">
-                <div className="flex -space-x-2">
-                  {['🧑‍🔧','👷','🧑‍💼','👩‍🔧'].map((e, i) => (
-                    <div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-600 to-slate-800 border-2 border-[#060B14] flex items-center justify-center text-sm">{e}</div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3 shadow-2xl backdrop-blur">
+              <div className="rounded-xl border border-white/10 bg-[#08111f] p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-300">Live Revenue Command</div>
+                    <div className="mt-1 text-lg font-black">Contractor Growth Dashboard</div>
+                  </div>
+                  <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-[10px] font-black text-emerald-300">Live</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'Pipeline', value: '$842,500', Icon: DollarSign, color: 'text-emerald-300' },
+                    { label: 'Close Rate', value: '41%', Icon: Target, color: 'text-sky-300' },
+                    { label: 'Estimate Speed', value: '42 min', Icon: Clock, color: 'text-amber-300' },
+                    { label: 'Follow-ups', value: '128', Icon: Workflow, color: 'text-violet-300' },
+                  ].map(({ label, value, Icon, color }) => (
+                    <div key={label} className="rounded-xl border border-white/10 bg-white/[0.05] p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</span>
+                        <Icon className={`h-4 w-4 ${color}`} />
+                      </div>
+                      <div className="font-sora text-2xl font-black">{value}</div>
+                    </div>
                   ))}
                 </div>
-                <div className="text-sm text-white/50">
-                  <span className="text-white font-semibold">500+</span> contractors closing more jobs
-                </div>
-              </div>
-            </div>
 
-            {/* Hero Visual – Live Simulator */}
-            <div id="simulator" className="flex justify-center scroll-mt-24">
-              <ProposalSimulator />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── TRUST METRICS STRIP ──────────────────────────────── */}
-      <section className="py-12 border-y border-white/5 bg-white/[0.02] backdrop-blur-sm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
-            {[
-              { value: 40, suffix: '%', label: 'Higher Close Rate', icon: TrendingUp },
-              { value: 5,  suffix: 'min', prefix: '<', label: 'Estimate Creation', icon: Clock },
-              { value: 35, suffix: '%', label: 'Larger Avg. Ticket', icon: BarChart3 },
-              { value: 94, suffix: '%', label: 'Homeowner Engagement', icon: Users },
-            ].map(({ value, suffix, prefix = '', label, icon: Icon }) => (
-              <div key={label} className="group">
-                <div className="flex items-center justify-center mb-2">
-                  <Icon className="w-4 h-4 text-copper opacity-60" />
-                </div>
-                <div className="text-3xl sm:text-4xl font-sora font-extrabold text-white mb-1">
-                  <AnimatedCounter target={value} suffix={suffix} prefix={prefix} />
-                </div>
-                <div className="text-xs text-white/40 font-medium uppercase tracking-wider">{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── WHY CONTRACTORS SWITCH ────────────────────────────── */}
-      <section className="py-24 sm:py-32 relative overflow-hidden bg-[#080D1A]">
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-copper/5 rounded-full blur-[100px] pointer-events-none" />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-[11px] text-white/60 font-semibold uppercase tracking-widest mb-5">
-              Why Contractors Switch
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-white mb-4">
-              A New Standard for <span className="text-copper">Contractor Proposals</span>
-            </h2>
-            <p className="text-white/50 text-base max-w-xl mx-auto">The gap between winning and losing a job is often the first impression — your proposal.</p>
-          </div>
-
-          {/* Table-based side-by-side comparison */}
-          <div className="max-w-4xl mx-auto bg-white/[0.02] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-            {/* Table Header */}
-            <div className="grid grid-cols-2 bg-white/5 border-b border-white/10 py-5 px-6 sm:px-8 text-sm font-bold uppercase tracking-wider font-sora">
-              <div className="text-white/40">The Outdated PDF Way</div>
-              <div className="text-copper flex items-center gap-1.5">⚡ The PeakEstimator Way</div>
-            </div>
-            
-            {/* Table Rows */}
-            {[
-              { old: 'Static PDF attachments that look like invoices', new: 'Beautiful, responsive web proposals built for mobile screens' },
-              { old: 'One flat take-it-or-leave-it price number', new: 'Good / Better / Best structured choices' },
-              { old: 'Hard, aggressive upsells that feel pushy', new: 'Self-guided client upgrades and accessory toggles' },
-              { old: 'Slow approvals with print-sign-scan steps', new: 'Instant digital signature approvals completed in seconds' },
-              { old: 'Generic, unbranded, forgettable layouts', new: 'Premium, interactive modern homeowner experience' },
-            ].map((row, i) => (
-              <div key={i} className={`grid grid-cols-2 py-5 px-6 sm:px-8 text-sm gap-6 border-b border-white/5 hover:bg-white/[0.01] transition-colors ${i % 2 === 1 ? 'bg-white/[0.005]' : ''}`}>
-                <div className="text-white/50 flex items-start gap-2.5">
-                  <X className="w-4 h-4 text-red-500/60 shrink-0 mt-0.5" />
-                  <span>{row.old}</span>
-                </div>
-                <div className="text-white font-medium flex items-start gap-2.5">
-                  <CheckCircle className="w-4 h-4 text-copper shrink-0 mt-0.5" />
-                  <span>{row.new}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── HOMEOWNER EXPERIENCE ──────────────────────────────── */}
-      <section className="py-24 sm:py-32 bg-[#060B14] relative overflow-hidden">
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-500/6 rounded-full blur-[120px] pointer-events-none" />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 items-center">
-            {/* Mobile phone mockup */}
-            <div className="flex justify-center order-2 lg:order-1">
-              <div className="relative">
-                {/* Glow */}
-                <div className="absolute inset-0 bg-copper/15 rounded-[3rem] blur-2xl scale-95" />
-                {/* Phone shell */}
-                <div className="relative w-64 bg-[#0D1526] rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">
-                  <div className="bg-[#0A1020] px-4 py-3 border-b border-white/5 flex items-center justify-between">
-                    <div className="text-white/70 text-xs font-semibold font-sora">Your Proposal</div>
-                    <div className="text-[10px] text-emerald-400 font-bold bg-emerald-400/10 px-2 py-0.5 rounded-full">● Open</div>
+                <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_0.8fr]">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-xs font-black">Active Pipeline</span>
+                      <span className="text-[10px] text-slate-400">6 stages</span>
+                    </div>
+                    {['New Audit', 'Qualified', 'Demo Scheduled', 'Proposal Sent'].map((stage, index) => (
+                      <div key={stage} className="mb-2 rounded-lg border border-white/10 bg-[#0d1728] p-2 last:mb-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold">{stage}</span>
+                          <span className="text-[10px] font-black text-sky-300">{[12, 8, 5, 3][index]}</span>
+                        </div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+                          <div className="h-full rounded-full bg-sky-400" style={{ width: `${[88, 64, 42, 26][index]}%` }} />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="p-4 space-y-3">
-                    {/* Tier badges */}
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {[
-                        { l: 'Good', p: '$8,800', c: 'bg-slate-700' },
-                        { l: 'Better', p: '$13,500', c: 'bg-copper', sel: true },
-                        { l: 'Best', p: '$19,800', c: 'bg-violet-700' },
-                      ].map(t => (
-                        <div key={t.l} className={`${t.c} rounded-xl p-2 text-center ${t.sel ? 'ring-2 ring-amber-400 scale-105' : 'opacity-60'}`}>
-                          <div className="text-[9px] text-white font-bold">{t.l}</div>
-                          <div className="text-[10px] text-white font-extrabold mt-0.5">{t.p}</div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                    <div className="text-xs font-black">Revenue Intelligence Engine</div>
+                    <div className="mt-3 rounded-lg bg-sky-400/10 p-3">
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-sky-300">Recoverable Revenue</div>
+                      <div className="mt-1 font-sora text-3xl font-black">+$214K</div>
+                      <div className="mt-1 text-[10px] text-slate-400">Based on missed follow-ups, delayed estimates, and pricing leakage.</div>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {['Proposal viewed 4x', 'Follow-up sequence armed', 'Margin warning detected'].map(item => (
+                        <div key={item} className="flex items-center gap-2 text-[11px] text-slate-300">
+                          <CheckCircle className="h-3.5 w-3.5 text-emerald-300" />
+                          {item}
                         </div>
                       ))}
                     </div>
-                    {/* Items */}
-                    {['200A Panel Upgrade', 'AFCI Breakers x12', 'Permit & Inspection'].map(item => (
-                      <div key={item} className="flex items-center gap-2 text-[10px] text-white/70">
-                        <CheckCircle className="w-3 h-3 text-copper shrink-0" />
-                        <span>{item}</span>
-                      </div>
-                    ))}
-                    {/* Financing */}
-                    <div className="bg-copper/15 rounded-xl p-3 border border-copper/20">
-                      <div className="text-[9px] text-copper font-bold uppercase tracking-wider mb-1">Financing Available</div>
-                      <div className="text-white font-extrabold text-sm">$228/mo</div>
-                      <div className="text-white/40 text-[9px]">60 months @ 9.99% APR</div>
-                    </div>
-                    {/* Sign button */}
-                    <button className="w-full bg-copper text-white text-[11px] font-bold py-2.5 rounded-xl flex items-center justify-center gap-1">
-                      <Pen className="w-3 h-3" /> Approve & Sign
-                    </button>
-                    <div className="text-[9px] text-white/30 text-center">Homeowner signs digitally in seconds</div>
-                  </div>
-                </div>
-
-                {/* Floating badge */}
-                <div className="absolute -right-8 top-16 bg-emerald-500 text-white text-[10px] font-black px-3 py-1.5 rounded-xl shadow-xl rotate-6">
-                  ✓ Signed!
-                </div>
-                <div className="absolute -left-10 bottom-20 bg-[#0D1526] border border-white/10 text-[10px] px-3 py-2 rounded-xl shadow-xl -rotate-3">
-                  <div className="text-white/60 text-[9px]">Notification</div>
-                  <div className="text-white font-semibold">🎉 Proposal approved</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Copy */}
-            <div className="order-1 lg:order-2">
-              <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-[11px] text-white/60 font-semibold uppercase tracking-widest mb-6">
-                <Smartphone className="w-3 h-3" /> Homeowner Experience
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-white mb-5 leading-tight">
-                Your Proposal Is<br />
-                <span className="text-copper">Your Salesperson.</span>
-              </h2>
-              <p className="text-white/60 text-base leading-relaxed mb-8">
-                Homeowners don't open PDF attachments. They open a beautiful, interactive web page on their phone — where they can compare options, toggle add-ons, see financing, and sign digitally in seconds.
-              </p>
-              <ul className="space-y-4">
-                {[
-                  { icon: MousePointer, title: 'Interactive Option Selection', desc: 'Homeowners choose between tiers instead of negotiating price' },
-                  { icon: BarChart3, title: 'Live Financing Preview', desc: 'Monthly payment estimates reduce sticker shock and increase close rates' },
-                  { icon: Pen, title: 'Digital Signature in One Tap', desc: 'No paperwork, no back-and-forth — the signature comes to you' },
-                  { icon: Zap, title: 'Instant Approval Notifications', desc: 'Know the moment they approve so you can lock in the schedule' },
-                ].map(({ icon: Icon, title, desc }) => (
-                  <li key={title} className="flex items-start gap-4">
-                    <div className="w-9 h-9 rounded-xl bg-copper/15 border border-copper/20 flex items-center justify-center shrink-0 mt-0.5">
-                      <Icon className="w-4 h-4 text-copper" />
-                    </div>
-                    <div>
-                      <div className="text-white font-semibold text-sm mb-0.5">{title}</div>
-                      <div className="text-white/50 text-xs leading-relaxed">{desc}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── BUILT FOR CLOSING SECTION ────────────────────────── */}
-      <section className="py-24 sm:py-32 bg-[#0A0F1D] border-t border-white/5 relative overflow-hidden">
-        {/* Decorative background glow */}
-        <div className="absolute top-1/2 left-1/4 w-[500px] h-[300px] bg-copper/5 rounded-full blur-[100px] pointer-events-none" />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
-          
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-[11px] text-white/60 font-semibold uppercase tracking-widest mb-5">
-              <Zap className="w-3 h-3 text-copper animate-pulse" /> The Conversion Layer
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-white mb-5 leading-tight">
-              Built for Closing, <span className="text-copper">Not Just Estimating.</span>
-            </h2>
-            <p className="text-white/50 text-base max-w-2xl mx-auto font-inter">
-              We don't try to be your dispatcher, your fleet tracker, or your payroll processor. PeakEstimator is the hyper-focused proposal layer engineered for one thing: contractor revenue.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-16">
-            {/* Columns */}
-            <div className="space-y-8">
-              <div className="bg-white/[0.02] border border-white/8 p-6 sm:p-8 rounded-3xl hover:bg-white/[0.04] transition-all duration-300">
-                <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-4">
-                  <X className="w-5 h-5 text-red-400" />
-                </div>
-                <h3 className="text-lg font-bold text-white font-sora mb-2">Zero Dispatch Bloat</h3>
-                <p className="text-sm text-white/50 leading-relaxed font-inter">
-                  Traditional contractor systems are bloated with dispatch grids, map routing, and timecards. We skip the back-office complexity so your sales reps and technicians actually enjoy using the tool.
-                </p>
-              </div>
-
-              <div className="bg-white/[0.02] border border-white/8 p-6 sm:p-8 rounded-3xl hover:bg-white/[0.04] transition-all duration-300">
-                <div className="w-10 h-10 rounded-2xl bg-copper/10 border border-copper/20 flex items-center justify-center mb-4">
-                  <Zap className="w-5 h-5 text-copper" />
-                </div>
-                <h3 className="text-lg font-bold text-white font-sora mb-2">Speed as a Weapon</h3>
-                <p className="text-sm text-white/50 leading-relaxed font-inter">
-                  The contractor who sends the proposal first wins 60% of the time. Build elite multi-option proposals in under 5 minutes right from the driveway, and get approval before starting the truck.
-                </p>
-              </div>
-            </div>
-
-            {/* Visual ERP Layer Map */}
-            <div className="bg-white/[0.02] border border-white/10 rounded-3xl p-6 sm:p-8 relative">
-              <h4 className="text-white font-bold text-sm uppercase tracking-wider mb-6 text-center font-sora">How PeakEstimator Sits on Top of Your Stack</h4>
-              
-              <div className="space-y-6 relative">
-                {/* Visual Connection line (vertical) */}
-                <div className="absolute left-[27px] top-8 bottom-8 w-0.5 bg-gradient-to-b from-white/10 via-copper/40 to-white/10" />
-
-                {/* Step 1 */}
-                <div className="flex items-center gap-4 relative z-10 group">
-                  <div className="w-14 h-14 rounded-2xl bg-[#0F172A] border border-white/10 flex items-center justify-center shrink-0 shadow-lg group-hover:border-white/20 transition-colors">
-                    <Users className="w-6 h-6 text-white/40" />
-                  </div>
-                  <div>
-                    <div className="text-white/40 text-[10px] font-bold uppercase tracking-wider">Step 1: Your Backend CRM</div>
-                    <div className="text-white font-semibold text-sm">ServiceTitan, Housecall Pro, or Spreadsheets</div>
-                    <div className="text-white/40 text-xs mt-0.5 font-inter">Scheduling, customer history & dispatching</div>
-                  </div>
-                </div>
-
-                {/* Step 2 (PeakEstimator Layer - Main focus) */}
-                <div className="flex items-center gap-4 relative z-10 group">
-                  <div className="w-14 h-14 rounded-2xl bg-copper/10 border-2 border-copper flex items-center justify-center shrink-0 shadow-xl shadow-copper/10 scale-105">
-                    <PeakLogo size={28} />
-                  </div>
-                  <div className="bg-copper/5 border border-copper/30 rounded-2xl p-4 flex-1">
-                    <div className="text-copper text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                      ⭐ The Conversion Layer
-                    </div>
-                    <div className="text-white font-bold text-sm mt-0.5">PeakEstimator Proposals</div>
-                    <div className="text-white/70 text-xs mt-1 font-inter">G/B/B Option Tiers · Live Financing · Digital Signatures</div>
-                  </div>
-                </div>
-
-                {/* Step 3 */}
-                <div className="flex items-center gap-4 relative z-10 group">
-                  <div className="w-14 h-14 rounded-2xl bg-[#0F172A] border border-white/10 flex items-center justify-center shrink-0 shadow-lg group-hover:border-white/20 transition-colors">
-                    <BarChart3 className="w-6 h-6 text-white/40" />
-                  </div>
-                  <div>
-                    <div className="text-white/40 text-[10px] font-bold uppercase tracking-wider">Step 3: Accounting & Invoicing</div>
-                    <div className="text-white font-semibold text-sm">QuickBooks, Stripe, or Sage</div>
-                    <div className="text-white/40 text-xs mt-0.5 font-inter">Automated sync for deposits and bookkeeping</div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── WORKFLOW ──────────────────────────────────────────── */}
-      <section className="py-24 sm:py-32 bg-[#080D1A]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-[11px] text-white/60 font-semibold uppercase tracking-widest mb-5">
-              <Clock className="w-3 h-3" /> Workflow
+        <section id="leaks" className="border-b border-white/10 bg-[#070d19] px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-7xl">
+            <div className="max-w-3xl">
+              <div className="mb-3 text-[10px] font-black uppercase tracking-[0.24em] text-sky-300">Revenue Leak Messaging</div>
+              <h2 className="font-sora text-3xl font-black tracking-tight sm:text-4xl">Most contractors lose more money from operational inefficiency than competitors.</h2>
+              <p className="mt-4 text-sm leading-6 text-slate-400">Slow estimates, missed follow-ups, inconsistent pricing, callback delays, and disconnected tools quietly drain revenue before a job ever reaches the signed stage.</p>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-white mb-4">
-              From Inspection to Approval<br />
-              <span className="text-copper">in Minutes.</span>
-            </h2>
-            <p className="text-white/50 text-base max-w-lg mx-auto">The entire sales cycle — from walking the job to collecting a signature — happens faster than your competitor sends a quote.</p>
-          </div>
-
-          {/* Workflow steps */}
-          <div className="relative">
-            {/* Connecting line (desktop) */}
-            <div className="hidden md:block absolute top-12 left-[10%] right-[10%] h-px bg-gradient-to-r from-transparent via-copper/30 to-transparent z-0" />
-
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative z-10">
+            <div className="mt-10 grid gap-3 md:grid-cols-3">
               {[
-                { icon: Camera, step: '01', title: 'Take Photos', desc: 'Document the job on-site', color: 'text-blue-400', bg: 'bg-blue-400/10 border-blue-400/20' },
-                { icon: FileText, step: '02', title: 'Build Estimate', desc: 'Tap items from your price book', color: 'text-copper', bg: 'bg-copper/10 border-copper/20' },
-                { icon: Star, step: '03', title: 'Present Options', desc: 'Good / Better / Best tiers', color: 'text-amber-400', bg: 'bg-amber-400/10 border-amber-400/20' },
-                { icon: MousePointer, step: '04', title: 'Client Approves', desc: 'Digital signature on their phone', color: 'text-violet-400', bg: 'bg-violet-400/10 border-violet-400/20' },
-                { icon: Trophy, step: '05', title: 'Job Won', desc: 'Notification + job locked in', color: 'text-emerald-400', bg: 'bg-emerald-400/10 border-emerald-400/20' },
-              ].map(({ icon: Icon, step, title, desc, color, bg }, i) => (
-                <div key={step} className="flex flex-col items-center text-center group">
-                  <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border ${bg} flex items-center justify-center mb-4 transition-transform group-hover:-translate-y-1 duration-300 shadow-lg`}>
-                    <Icon className={`w-7 h-7 sm:w-8 sm:h-8 ${color}`} />
-                  </div>
-                  <div className={`text-[10px] font-bold uppercase tracking-widest ${color} mb-1`}>Step {step}</div>
-                  <div className="text-white font-bold text-sm mb-1 font-sora">{title}</div>
-                  <div className="text-white/40 text-xs leading-relaxed">{desc}</div>
-                  {i < 4 && (
-                    <div className="md:hidden mt-3 text-white/20">
-                      <ChevronRight className="w-4 h-4 mx-auto rotate-90" />
-                    </div>
-                  )}
+                { title: 'Slow estimates', body: 'The faster contractor often controls the buying conversation.', Icon: Clock },
+                { title: 'Missed follow-ups', body: 'Unworked proposals turn into invisible lost revenue.', Icon: Mail },
+                { title: 'Inconsistent pricing', body: 'Margin leakage compounds across every estimator.', Icon: Gauge },
+                { title: 'Manual workflows', body: 'Office teams become the bottleneck as lead volume grows.', Icon: Workflow },
+                { title: 'Low close rates', body: 'Generic proposals fail to justify premium pricing.', Icon: Target },
+                { title: 'Disorganized operations', body: 'Leads leak between inboxes, texts, spreadsheets, and calendars.', Icon: Layers },
+              ].map(({ title, body, Icon }) => (
+                <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+                  <Icon className="mb-4 h-5 w-5 text-sky-300" />
+                  <h3 className="font-sora text-sm font-black">{title}</h3>
+                  <p className="mt-2 text-xs leading-5 text-slate-400">{body}</p>
                 </div>
               ))}
             </div>
           </div>
+        </section>
 
-          <div className="mt-12 text-center">
-            <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-5 py-3 text-sm text-emerald-300 font-semibold">
-              <Trophy className="w-4 h-4" /> Average time from site visit to signature: <strong className="text-emerald-200 ml-1">under 8 minutes</strong>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── GOOD / BETTER / BEST FEATURE ──────────────────────── */}
-      <section className="py-24 sm:py-32 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#060B14] to-[#0A0F1E]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] bg-copper/5 rounded-full blur-[120px] pointer-events-none" />
-
-        <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-[11px] text-white/60 font-semibold uppercase tracking-widest mb-5">
-              <BarChart3 className="w-3 h-3" /> The Close Rate Secret
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-white mb-5 leading-tight">
-              Give Homeowners Options Instead<br />
-              <span className="text-copper">of One Expensive Number.</span>
-            </h2>
-            <p className="text-white/50 text-base max-w-2xl mx-auto font-inter">
-              Help customers choose confidently instead of reacting to one overwhelming price. When you present a single quote, homeowners compare you to competitors. When you present three tiers as a structured sales process, they compare your options to each other — and almost always pick the middle one.
-            </p>
-          </div>
-
-          {/* Tier cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            {[
-              {
-                tier: 'Good', icon: Shield, price: '$8,800', gradient: 'from-slate-600 to-slate-800',
-                badge: null, features: ['Standard materials', '1-year workmanship warranty', 'Basic permit filing', 'Standard timeline'],
-              },
-              {
-                tier: 'Better', icon: Star, price: '$13,500', gradient: 'from-amber-600 to-orange-700',
-                badge: '⭐ Most Selected', features: ['Premium materials', '5-year warranty', 'Priority scheduling', 'Dedicated contact', 'Financing available'],
-                highlight: true,
-              },
-              {
-                tier: 'Best', icon: Zap, price: '$19,800', gradient: 'from-violet-600 to-indigo-700',
-                badge: null, features: ['Elite materials', '10-year warranty', 'Same-week scheduling', 'White-glove service', 'Surge protection included'],
-              },
-            ].map(({ tier, icon: Icon, price, gradient, badge, features, highlight }) => (
-              <div
-                key={tier}
-                className={`relative rounded-3xl overflow-hidden border transition-all duration-300 hover:-translate-y-1 ${
-                  highlight
-                    ? 'border-copper/40 shadow-xl shadow-copper/10 scale-[1.02]'
-                    : 'border-white/10 hover:border-white/20'
-                }`}
-              >
-                {badge && (
-                  <div className="bg-copper text-white text-[10px] font-black text-center py-2 tracking-widest uppercase">
-                    {badge}
-                  </div>
-                )}
-                <div className={`bg-gradient-to-br ${gradient} px-6 pt-6 pb-8`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Icon className="w-5 h-5 text-white/70" />
-                    <span className="text-white/70 text-xs font-bold uppercase tracking-widest">{tier}</span>
-                  </div>
-                  <div className="text-3xl font-extrabold text-white font-sora">{price}</div>
+        <section id="revenue-audit" className="bg-[#050914] px-4 py-20 sm:px-6">
+          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.82fr_1.18fr]">
+            <div>
+              <div className="sticky top-24 rounded-2xl border border-sky-400/20 bg-sky-400/8 p-5">
+                <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-sky-300">
+                  <Search className="h-3.5 w-3.5" />
+                  Revenue Audit System
                 </div>
-                <div className="bg-[#0D1526] p-6">
-                  <ul className="space-y-2.5">
-                    {features.map(f => (
-                      <li key={f} className="flex items-center gap-2.5 text-sm text-white/70">
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Benefit callouts */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {[
-              { icon: TrendingUp, stat: '+35%', label: 'Larger average ticket', desc: 'Upsells and premium tiers naturally lift your project value' },
-              { icon: MousePointer, stat: '+40%', label: 'Higher close rate', desc: 'Homeowners say yes faster when they choose, not react' },
-              { icon: Users, stat: '94%', label: 'Engagement rate', desc: 'Clients actually read and interact with your proposal' },
-            ].map(({ icon: Icon, stat, label, desc }) => (
-              <div key={label} className="bg-white/3 border border-white/8 rounded-2xl p-6 text-center hover:bg-white/5 transition-colors">
-                <Icon className="w-6 h-6 text-copper mx-auto mb-3" />
-                <div className="text-2xl font-extrabold text-white font-sora mb-1">{stat}</div>
-                <div className="text-sm font-bold text-white mb-1">{label}</div>
-                <div className="text-xs text-white/40 leading-relaxed">{desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── SIMPLE SETUP ─────────────────────────────────────── */}
-      <section className="py-24 sm:py-32 bg-[#080D1A]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-[11px] text-white/60 font-semibold uppercase tracking-widest mb-5">
-              <Hammer className="w-3 h-3" /> Setup
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-white mb-4">
-              Start Sending Modern Proposals<br />
-              <span className="text-copper">Without Enterprise Complexity.</span>
-            </h2>
-            <p className="text-white/50 text-base max-w-xl mx-auto">No IT team needed. No 3-month onboarding. Just upload your logo and you're closing jobs.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              { num: '1', icon: Award, title: 'Add Your Branding', desc: 'Upload your logo in 30 seconds. Your proposals instantly look like yours — not a template.', time: '30 seconds' },
-              { num: '2', icon: FileText, title: 'Load Your Pricing', desc: 'Import from your spreadsheet or use our 93+ pre-loaded trade price book items. No manual typing.', time: '5 minutes' },
-              { num: '3', icon: Trophy, title: 'Send & Win Jobs', desc: 'Tap to build an estimate from any job site. Send the link. Collect the signature.', time: 'Under 5 min' },
-            ].map(({ num, icon: Icon, title, desc, time }) => (
-              <div key={num} className="relative bg-white/3 border border-white/8 rounded-3xl p-8 hover:bg-white/5 hover:border-white/15 transition-all hover:-translate-y-1 group">
-                <div className="w-12 h-12 rounded-2xl bg-copper/15 border border-copper/20 flex items-center justify-center mb-5 group-hover:bg-copper/25 transition-colors">
-                  <Icon className="w-5 h-5 text-copper" />
-                </div>
-                <div className="text-5xl font-sora font-extrabold text-white/5 absolute top-6 right-6">{num}</div>
-                <div className="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2.5 py-1 text-[10px] text-emerald-400 font-bold uppercase tracking-wider mb-3">
-                  <Clock className="w-3 h-3" /> {time}
-                </div>
-                <h3 className="text-white font-bold text-base font-sora mb-2">{title}</h3>
-                <p className="text-white/50 text-sm leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS ─────────────────────────────────────── */}
-      <section className="py-24 sm:py-32 bg-[#060B14] relative overflow-hidden">
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-[400px] h-[600px] bg-copper/4 rounded-full blur-[100px] pointer-events-none" />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-[11px] text-white/60 font-semibold uppercase tracking-widest mb-5">
-              <Users className="w-3 h-3" /> Contractor Stories
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-white mb-4">
-              Contractors Are <span className="text-copper">Closing More Jobs.</span>
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                name: 'Mike R.', trade: '⚡ Electrical', location: 'Phoenix, AZ',
-                quote: 'Clients immediately noticed the difference. We sent our first PeakEstimator proposal and the homeowner called back same day to approve. That never happened with our old PDFs.',
-                result: '+38% close rate',
-              },
-              {
-                name: 'Sarah K.', trade: '🏠 Roofing', location: 'Denver, CO',
-                quote: 'We started closing higher-ticket jobs. The Better tier upgrade happens almost automatically — homeowners just pick it because it looks so compelling. Our average ticket jumped $4K.',
-                result: '$4,200 avg ticket increase',
-                highlight: true,
-              },
-              {
-                name: 'James T.', trade: '❄️ HVAC', location: 'Dallas, TX',
-                quote: 'Way easier than our previous system. I trained my whole team in an afternoon. Now we send proposals from the truck before we even drive away. It pays for itself every week.',
-                result: 'Setup in under an hour',
-              },
-            ].map(({ name, trade, location, quote, result, highlight }) => (
-              <div
-                key={name}
-                className={`rounded-3xl p-7 border transition-all hover:-translate-y-1 ${
-                  highlight
-                    ? 'bg-gradient-to-br from-copper/10 to-amber-500/5 border-copper/25 shadow-xl shadow-copper/8'
-                    : 'bg-white/3 border-white/8 hover:border-white/15 hover:bg-white/5'
-                }`}
-              >
-                {/* Top badge and stars */}
-                <div className="flex items-center justify-between mb-5 gap-2">
-                  <div className="flex gap-0.5">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 text-amber-400 fill-amber-400" />
+                <h2 className="font-sora text-3xl font-black">Analyze My Operations</h2>
+                <p className="mt-3 text-sm leading-6 text-slate-400">Answer a few operational questions. PeakEstimator calculates estimated lost revenue, efficiency gaps, follow-up risk, maturity score, and projected revenue recovery.</p>
+                <div className="mt-5 rounded-xl border border-white/10 bg-[#08111f] p-4">
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Estimated Recoverable Revenue</div>
+                  <div className="mt-1 font-sora text-4xl font-black text-emerald-300">+${result.annualRecoverableRevenue.toLocaleString()}<span className="text-lg text-slate-400">/year</span></div>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    {[
+                      ['Efficiency', result.efficiencyScore],
+                      ['Follow-up', result.followUpScore],
+                      ['Scalability', result.scalabilityScore],
+                      ['Maturity', result.maturityScore],
+                    ].map(([label, value]) => (
+                      <div key={label as string} className="rounded-lg bg-white/[0.05] p-2">
+                        <div className="text-[9px] font-bold uppercase text-slate-500">{label}</div>
+                        <div className="mt-1 text-lg font-black">{value}</div>
+                      </div>
                     ))}
                   </div>
-                  <div className="text-[10px] font-bold text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-2.5 py-1 rounded-lg text-right uppercase tracking-wider font-sora">
-                    {result}
-                  </div>
-                </div>
-                <p className="text-white/80 text-sm leading-relaxed mb-6 italic font-inter">"{quote}"</p>
-                <div className="flex items-center gap-3">
-                  <div>
-                    <div className="text-white font-bold text-sm font-sora">{name}</div>
-                    <div className="text-white/40 text-xs font-inter">{trade} · {location}</div>
-                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-           WHAT ACTUALLY MAKES US DIFFERENT
-         ══════════════════════════════════════════════════════ */}
-      <section className="py-24 sm:py-32 bg-[#060B14] relative overflow-hidden">
-        <div className="absolute bottom-0 left-1/3 w-[500px] h-[300px] bg-copper/5 rounded-full blur-[100px] pointer-events-none" />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-[11px] text-white/60 font-semibold uppercase tracking-widest mb-5">
-              <Zap className="w-3 h-3 text-copper animate-pulse" /> Exclusive Capabilities
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-white mb-4 leading-tight">
-              Features Competitors Can't<br />
-              <span className="text-copper">Copy Overnight.</span>
-            </h2>
-            <p className="text-white/50 text-base max-w-xl mx-auto">These are the specific things we built that will make homeowners remember your business — and make you impossible to replace.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[
-              {
-                emoji: '💰',
-                title: 'Financing Calculator on Every Proposal',
-                desc: 'Homeowners see monthly payment breakdowns (e.g. $228/mo for 60 months) right inside your proposal. Contractors with financing options close 40% more jobs. No other proposal tool embeds this.',
-                tag: 'Closes More Jobs',
-                tagColor: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
-              },
-              {
-                emoji: '🎨',
-                title: 'Your Brand. Zero PeakEstimator Trace.',
-                desc: 'Upload your logo once. Every PDF, every client portal link, every signature page shows your company name and colors. Clients never see "Powered by" anything — unless you want them to.',
-                tag: 'White-label Ready',
-                tagColor: 'text-violet-400 bg-violet-400/10 border-violet-400/20',
-              },
-              {
-                emoji: '📊',
-                title: 'Proposal Analytics That Actually Matter',
-                desc: 'Know exactly when your client opened the proposal, which tier they spent the most time on, and when they dropped off. Follow up at exactly the right moment with context.',
-                tag: 'Unfair Advantage',
-                tagColor: 'text-copper bg-copper/10 border-copper/20',
-              },
-              {
-                emoji: '📸',
-                title: 'AI Scope Generator from Job Site Photos',
-                desc: 'Upload 3 photos of the job site and AI builds your line items automatically — with quantities. No other estimating tool does this. You go from photos to proposal in under 4 minutes.',
-                tag: 'AI-Powered',
-                tagColor: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-              },
-              {
-                emoji: '⚡',
-                title: 'Digital Change Orders — On the Fly',
-                desc: 'Scope changed mid-job? Send a change order from the same workspace. Client signs it on their phone in seconds. Stop losing money on verbal agreements that disappear.',
-                tag: 'Protect Your Margin',
-                tagColor: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
-              },
-              {
-                emoji: '📋',
-                title: 'Sub-contractor Bid Leveling',
-                desc: 'Invite 3 subs for a scope, collect their bids, and compare them side by side in a structured leveling table. Pick the best value with full context — not just the cheapest.',
-                tag: 'Project Control',
-                tagColor: 'text-rose-400 bg-rose-400/10 border-rose-400/20',
-              },
-              {
-                emoji: '⏱️',
-                title: 'Proposal Expiry Countdown',
-                desc: 'Every proposal shows a live countdown timer on the client portal — "This offer expires in 1 day 14 hours." Creates urgency without a single sales call.',
-                tag: 'Closes Faster',
-                tagColor: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
-              },
-              {
-                emoji: '🔒',
-                title: 'Auto-Generated Lien Waivers',
-                desc: 'The moment a deposit is marked paid, a conditional lien waiver is generated for client signature. Contractors pay lawyers $500+ per project for this — you get it for free.',
-                tag: 'Legal Protection',
-                tagColor: 'text-slate-300 bg-white/5 border-white/10',
-              },
-              {
-                emoji: '📅',
-                title: 'Job Schedule + Milestone Tracker',
-                desc: 'Set milestones, crew days, and deadlines per project. The client portal shows a live progress bar. Clients stop calling "when is the crew coming?" — it\'s all right there.',
-                tag: 'Client Trust',
-                tagColor: 'text-violet-400 bg-violet-400/10 border-violet-400/20',
-              },
-            ].map(({ emoji, title, desc, tag, tagColor }) => (
-              <div key={title} className="group bg-white/[0.02] hover:bg-white/[0.05] border border-white/8 hover:border-white/15 rounded-3xl p-6 transition-all duration-300 hover:-translate-y-1">
-                <div className="text-3xl mb-4">{emoji}</div>
-                <div className={`inline-flex items-center text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg border mb-3 ${tagColor}`}>{tag}</div>
-                <h3 className="text-white font-bold text-sm font-sora mb-2 leading-tight">{title}</h3>
-                <p className="text-white/45 text-xs leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-           UPCOMING FEATURES — Request Integration
-         ══════════════════════════════════════════════════════ */}
-      <section className="py-24 sm:py-32 bg-[#080D1A] relative overflow-hidden">
-        <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 relative z-10">
-          <div className="text-center mb-14">
-            <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-4 py-1.5 text-[11px] text-indigo-300 font-semibold uppercase tracking-widest mb-5">
-              <Bell className="w-3 h-3" /> Coming Soon
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-sora font-extrabold text-white mb-4 leading-tight">
-              The Roadmap Is Built<br />
-              <span className="text-copper">Around Your Revenue.</span>
-            </h2>
-            <p className="text-white/50 text-base max-w-xl mx-auto">These features are in active development. Contractors who request them early get priority access and shape how they are built.</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
-            {[
-              {
-                emoji: '🎤',
-                title: 'Smart Voice Drop Follow-up',
-                desc: 'When a proposal goes cold after 3 days, the system sends a personalized voicemail to the client\'s phone automatically. 90%+ voicemail open rate.',
-                status: 'Available on Request',
-                statusColor: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
-              },
-              {
-                emoji: '🌐',
-                title: 'Fully Custom Domain Client Portal',
-                desc: 'proposals.yourcompany.com — your own subdomain, your branding, your CNAME. No peakestimator.com in the URL your clients ever see.',
-                status: 'Available on Request',
-                statusColor: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
-              },
-              {
-                emoji: '🤝',
-                title: 'CRM Auto-Sync (HubSpot / Salesforce)',
-                desc: 'Every approved proposal automatically creates or updates a deal in your CRM. Your pipeline stays current without manual data entry.',
-                status: 'In Development',
-                statusColor: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-              },
-              {
-                emoji: '📦',
-                title: 'QuickBooks / Xero Invoice Sync',
-                desc: 'When a proposal is approved, a draft invoice is automatically created in your accounting software — pre-filled with line items and totals.',
-                status: 'In Development',
-                statusColor: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-              },
-            ].map(({ emoji, title, desc, status, statusColor }) => (
-              <div key={title} className="bg-white/[0.02] border border-white/8 rounded-3xl p-6 flex gap-4 hover:border-white/15 hover:bg-white/[0.04] transition-all">
-                <div className="text-2xl shrink-0 mt-0.5">{emoji}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <h3 className="text-white font-bold text-sm font-sora">{title}</h3>
-                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${statusColor}`}>{status}</span>
-                  </div>
-                  <p className="text-white/45 text-xs leading-relaxed">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-gradient-to-br from-copper/10 to-amber-500/5 border border-copper/20 rounded-3xl p-8 text-center">
-            <div className="text-2xl mb-3">🙋</div>
-            <h3 className="text-white font-bold font-sora text-lg mb-2">Want a Feature That&apos;s Not Listed?</h3>
-            <p className="text-white/50 text-sm mb-6 max-w-md mx-auto">Request an integration, a workflow, or a new capability directly from inside your account. We build based on what contractors actually need — not what looks good in a pitch deck.</p>
-            <button
-              onClick={() => setShowDemoModal(true)}
-              className="inline-flex items-center gap-2 bg-copper hover:bg-amber-600 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-lg hover:-translate-y-0.5"
-            >
-              <Zap className="w-4 h-4" /> Request a Feature
-            </button>
-          </div>
-        </div>
-      </section>
-
-            {/* ── FINAL CTA ──────────────────────────────────────────── */}
-      <section className="py-24 sm:py-32 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0D1526] via-[#111827] to-[#0D1526]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-copper/8 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-
-        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <div className="inline-flex items-center gap-2 bg-copper/15 border border-copper/25 rounded-full px-5 py-2 text-copper text-xs font-bold uppercase tracking-widest mb-8">
-            <Trophy className="w-3.5 h-3.5" /> Join 500+ Winning Contractors
-          </div>
-
-          <h2 className="text-4xl sm:text-5xl xl:text-6xl font-sora font-extrabold text-white mb-6 leading-[1.08] tracking-tight">
-            Win More Jobs With a Proposal<br />
-            <span className="bg-gradient-to-r from-copper to-amber-400 bg-clip-text text-transparent">
-              Experience Homeowners Remember.
-            </span>
-          </h2>
-
-          <p className="text-lg text-white/60 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Modern estimating and proposal workflows built for contractors who want to stand out, close faster, and grow their average ticket.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <button
-              id="final-book-demo-btn"
-              onClick={() => setShowDemoModal(true)}
-              className="inline-flex items-center justify-center gap-2 bg-copper hover:bg-amber-600 text-white font-bold text-base px-8 py-4 rounded-xl transition-all shadow-2xl shadow-copper/25 hover:-translate-y-0.5 active:translate-y-0"
-            >
-              Book Demo <ArrowRight className="w-5 h-5" />
-            </button>
-            <a
-              href="#simulator"
-              id="final-view-proposal-btn"
-              className="inline-flex items-center justify-center gap-2 bg-white/8 hover:bg-white/12 text-white font-bold text-base px-8 py-4 rounded-xl border border-white/10 transition-all"
-            >
-              <Play className="w-4 h-4 text-copper" /> See Interactive Proposal
-            </a>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-white/40">
-            {['No setup fees', 'Mobile-first', 'Up and running today', 'Cancel anytime'].map(item => (
-              <span key={item} className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-emerald-500" />
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── FOOTER ───────────────────────────────────────────── */}
-      <footer className="border-t border-white/5 bg-[#060B14] py-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <Link to="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-              <PeakLogo size={30} />
-              <div>
-                <div className="text-sm font-sora font-bold text-white">Peak<span className="text-copper">Estimator</span></div>
-                <div className="text-xs text-white/30">Modern proposals. More closed jobs.</div>
-              </div>
-            </Link>
-            <div className="text-white/25 text-xs">© {new Date().getFullYear()} PeakEstimator. All rights reserved.</div>
-            <div className="flex items-center gap-4">
-              <Link to="/login" className="text-xs text-white/40 hover:text-white transition-colors">Sign In</Link>
-            </div>
-          </div>
-        </div>
-      </footer>
-
-      {/* ── BOOK DEMO / WAITLIST MODAL ────────────────────────── */}
-      {showDemoModal && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
-          onClick={e => { if (e.target === e.currentTarget) setShowDemoModal(false); }}
-        >
-          <div className={`bg-[#0D1526] border border-white/10 rounded-3xl w-full shadow-2xl overflow-hidden transition-all duration-300 ${joined ? 'max-w-2xl' : 'max-w-md'} animate-scale-in`}>
-            <div className="px-7 py-5 border-b border-white/8 flex items-center justify-between">
-              <div>
-                <div className="text-white font-bold font-sora text-lg">
-                  {joined ? 'Schedule Your Walkthrough' : 'Book Your Demo'}
-                </div>
-                <div className="text-white/40 text-xs mt-0.5">
-                  {joined ? 'Select a time for a live video walkthrough' : "We'll reach out personally within 24 hours"}
-                </div>
-              </div>
-              <button
-                onClick={() => setShowDemoModal(false)}
-                className="p-2 rounded-xl hover:bg-white/8 text-white/40 hover:text-white transition-all"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
-            <div className="p-7 max-h-[85vh] overflow-y-auto scrollbar-thin">
-              {joined ? (
-                <div className="text-center space-y-4">
-                  <div className="text-4xl">🎉</div>
-                  <h3 className="text-lg font-sora font-extrabold text-white">Choose a Time below</h3>
-                  <p className="text-white/50 text-xs leading-relaxed max-w-sm mx-auto">
-                    We've saved your details! Select a convenient slot below to schedule your live demo instantly.
+            <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-4 shadow-2xl">
+              {submitted ? (
+                <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-8 text-center">
+                  <Shield className="mx-auto h-10 w-10 text-emerald-300" />
+                  <h3 className="mt-4 font-sora text-2xl font-black">Revenue Audit Complete</h3>
+                  <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-300">
+                    Your projected recoverable revenue is <strong className="text-emerald-300">+${result.annualRecoverableRevenue.toLocaleString()}/year</strong>. Our team now has your operational profile, lead score, urgency score, and revenue opportunity analysis.
                   </p>
-                  
-                  {/* Cal.com Inline Embed */}
-                  <div 
-                    id="cal-booking-embed" 
-                    className="w-full min-h-[480px] rounded-2xl overflow-hidden bg-white/[0.01] border border-white/8 mt-4"
-                  />
+                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
+                    {[
+                      ['Lead Score', result.leadScore],
+                      ['Urgency', result.urgencyScore],
+                      ['Growth Potential', result.growthPotentialScore],
+                    ].map(([label, value]) => (
+                      <div key={label as string} className="rounded-xl border border-white/10 bg-[#08111f] p-4">
+                        <div className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</div>
+                        <div className="mt-1 font-sora text-3xl font-black text-sky-300">{value}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
-                <form onSubmit={handleWaitlist} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-1.5">Your Name</label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={e => setName(e.target.value)}
-                      placeholder="Mike Johnson"
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-white/25 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-copper/50 focus:border-copper/40 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-1.5">Work Email <span className="text-copper">*</span></label>
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      placeholder="mike@yourcompany.com"
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder-white/25 rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-copper/50 focus:border-copper/40 transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-1.5">Your Trade</label>
-                    <select
-                      value={trade}
-                      onChange={e => setTrade(e.target.value)}
-                      className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-copper/50 focus:border-copper/40 transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="" className="bg-slate-900">Select your trade…</option>
-                      <option value="electrical" className="bg-slate-900">⚡ Electrical</option>
-                      <option value="roofing" className="bg-slate-900">🏠 Roofing</option>
-                      <option value="hvac" className="bg-slate-900">❄️ HVAC</option>
-                      <option value="painting" className="bg-slate-900">🎨 Painting</option>
-                      <option value="plumbing" className="bg-slate-900">🔧 Plumbing</option>
-                      <option value="drain" className="bg-slate-900">🚿 Drain & Sewer</option>
-                      <option value="general" className="bg-slate-900">🏗️ General Contracting</option>
-                    </select>
-                  </div>
-                  <button
-                    id="demo-submit-btn"
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full py-4 bg-copper hover:bg-amber-600 text-white font-bold text-base rounded-xl transition-all shadow-lg hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
-                  >
-                    {submitting ? (
-                      <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Submitting…</>
-                    ) : (
-                      <>Book My Demo <ArrowRight className="w-4 h-4" /></>
-                    )}
-                  </button>
-                  <div className="flex items-center justify-center gap-4 pt-1 flex-wrap">
-                    {['No spam', 'Personal onboarding', 'Cancel anytime'].map(t => (
-                      <span key={t} className="flex items-center gap-1 text-[11px] text-white/30">
-                        <CheckCircle className="w-3 h-3 text-white/30" /> {t}
-                      </span>
+                <>
+                  <div className="mb-5 flex items-center justify-between gap-3">
+                    {['Business', 'Metrics', 'Leakage', 'Tech Stack'].map((label, index) => (
+                      <button
+                        key={label}
+                        onClick={() => setStep(index as AuditStep)}
+                        className={`flex-1 rounded-xl border px-2 py-2 text-[10px] font-black uppercase tracking-wide transition ${
+                          step === index ? 'border-sky-400 bg-sky-400/10 text-sky-200' : 'border-white/10 bg-white/[0.03] text-slate-500'
+                        }`}
+                      >
+                        {label}
+                      </button>
                     ))}
                   </div>
-                </form>
+
+                  <div className="rounded-xl border border-white/10 bg-[#08111f] p-5">
+                    {step === 0 && (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <TextInput label="Company Name" value={form.company_name} onChange={value => update('company_name', value)} />
+                        <TextInput label="Owner Name" value={form.owner_name} onChange={value => update('owner_name', value)} />
+                        <TextInput label="Email" value={form.email} onChange={value => update('email', value)} icon={Mail} />
+                        <TextInput label="Phone" value={form.phone} onChange={value => update('phone', value)} icon={Phone} />
+                        <SelectInput label="Team Size" value={form.team_size} onChange={value => update('team_size', value)} options={['1', '2-5', '6-15', '16-50', '50+']} />
+                        <SelectInput label="Annual Revenue" value={form.annual_revenue_range} onChange={value => update('annual_revenue_range', value)} options={['<$500k', '$500k-$1M', '$1M-$3M', '$3M-$10M', '$10M+']} />
+                        <TextInput label="Service Area" value={form.service_area} onChange={value => update('service_area', value)} />
+                        <SelectInput label="Trade Type" value={form.trade_type} onChange={value => update('trade_type', value)} options={['general', 'roofing', 'hvac', 'electrical', 'plumbing', 'painting', 'remodeling', 'landscaping']} />
+                      </div>
+                    )}
+
+                    {step === 1 && (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {numberInput('estimates_per_month', 'Estimates per month')}
+                        {numberInput('average_project_size', 'Average project size', '$')}
+                        {numberInput('average_close_rate', 'Average close rate', '', '%')}
+                        {numberInput('average_response_time_hours', 'Average response time', '', 'hrs')}
+                        <SelectInput label="Follow-up Process" value={form.follow_up_process} onChange={value => update('follow_up_process', value)} options={['none', 'manual', 'structured', 'automated']} />
+                        {numberInput('estimator_count', 'Number of estimators')}
+                        {numberInput('office_staff_count', 'Office staff count')}
+                      </div>
+                    )}
+
+                    {step === 2 && (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {numberInput('lost_leads_per_month', 'Lost leads per month')}
+                        {numberInput('delayed_estimates_per_month', 'Delayed estimates per month')}
+                        <SelectInput label="Pricing Issues" value={form.inconsistent_pricing_issues} onChange={value => update('inconsistent_pricing_issues', value)} options={['rarely', 'sometimes', 'often', 'constant']} />
+                        {numberInput('missed_follow_ups_per_month', 'Missed follow-ups per month')}
+                        {numberInput('callback_delay_hours', 'Callback delays', '', 'hrs')}
+                        {numberInput('estimating_time_hours', 'Estimating time per project', '', 'hrs')}
+                        <TextInput label="Manual Processes" value={form.manual_processes} onChange={value => update('manual_processes', value)} full />
+                      </div>
+                    )}
+
+                    {step === 3 && (
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <TextInput label="Current CRM" value={form.current_crm} onChange={value => update('current_crm', value)} />
+                        <TextInput label="Estimating Software" value={form.estimating_software} onChange={value => update('estimating_software', value)} />
+                        <TextInput label="Scheduling Tools" value={form.scheduling_tools} onChange={value => update('scheduling_tools', value)} />
+                        <TextInput label="Invoicing Tools" value={form.invoicing_tools} onChange={value => update('invoicing_tools', value)} />
+                        <SelectInput label="Spreadsheet Usage" value={form.spreadsheet_usage} onChange={value => update('spreadsheet_usage', value)} options={['never', 'monthly', 'weekly', 'daily']} />
+                        <TextInput label="Manual Workflows" value={form.manual_workflows} onChange={value => update('manual_workflows', value)} full />
+                      </div>
+                    )}
+
+                    <div className="mt-6 flex items-center justify-between gap-3">
+                      <button
+                        onClick={() => setStep(Math.max(0, step - 1) as AuditStep)}
+                        disabled={step === 0}
+                        className="rounded-xl border border-white/10 px-4 py-3 text-xs font-black text-slate-300 disabled:opacity-40"
+                      >
+                        Previous
+                      </button>
+                      {step < 3 ? (
+                        <button
+                          onClick={() => setStep(Math.min(3, step + 1) as AuditStep)}
+                          className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-3 text-xs font-black text-white hover:bg-sky-400"
+                        >
+                          Continue <ChevronRight className="h-4 w-4" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={submitAudit}
+                          disabled={submitting}
+                          className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-xs font-black text-white hover:bg-emerald-400 disabled:opacity-60"
+                        >
+                          {submitting ? 'Analyzing...' : 'See My Revenue Leakage'} <ArrowRight className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* ── Corner watermark ──────────────────────────────────── */}
-      <div style={{ position:'fixed', bottom:'14px', right:'18px', opacity:0.22, zIndex:9999, pointerEvents:'none',
-        transform:'rotate(-1.5deg)', fontFamily:"'Courier New', Courier, monospace", fontSize:'10px',
-        fontStyle:'italic', letterSpacing:'0.08em', color:'#C58B5C', lineHeight:1.4, textAlign:'right', userSelect:'none' }}>
-        <span style={{ display:'block', fontSize:'7px', letterSpacing:'0.22em', textTransform:'uppercase', marginBottom:'2px', color:'#D9A679' }}>built by</span>
-        MAHMUD R B
-      </div>
+        <section className="border-t border-white/10 bg-[#070d19] px-4 py-20 sm:px-6">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-4 md:grid-cols-4">
+              {[
+                { title: 'CRM and Pipeline', body: 'Contacts, companies, activities, tasks, reminders, and deal stages.', Icon: Users },
+                { title: 'SmartScope', body: 'Scope suggestions, margin signals, and proposal structure without cheap AI positioning.', Icon: FileText },
+                { title: 'Intelligent Workflow System', body: 'Automated follow-up, demo scheduling, onboarding, and proposal reminders.', Icon: Workflow },
+                { title: 'Revenue Intelligence Engine', body: 'Close rate, revenue recovery, CAC, LTV, churn, and pipeline velocity.', Icon: BarChart3 },
+              ].map(({ title, body, Icon }) => (
+                <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+                  <Icon className="mb-4 h-5 w-5 text-sky-300" />
+                  <h3 className="font-sora text-sm font-black">{title}</h3>
+                  <p className="mt-2 text-xs leading-5 text-slate-400">{body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
+  );
+}
+
+function TextInput({
+  label,
+  value,
+  onChange,
+  icon: Icon = Building2,
+  full = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  icon?: React.ElementType;
+  full?: boolean;
+}) {
+  return (
+    <label className={full ? 'sm:col-span-2' : ''}>
+      <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</span>
+      <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 focus-within:border-sky-400">
+        <Icon className="h-4 w-4 text-slate-500" />
+        <input
+          value={value}
+          onChange={event => onChange(event.target.value)}
+          className="min-w-0 flex-1 bg-transparent py-3 text-sm font-bold text-white outline-none placeholder:text-slate-600"
+          placeholder={label}
+        />
+      </div>
+    </label>
+  );
+}
+
+function SelectInput({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+}) {
+  return (
+    <label>
+      <span className="mb-1.5 block text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</span>
+      <select
+        value={value}
+        onChange={event => onChange(event.target.value)}
+        className="w-full rounded-xl border border-white/10 bg-[#101a2b] px-3 py-3 text-sm font-bold text-white outline-none focus:border-sky-400"
+      >
+        {options.map(option => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
+    </label>
   );
 }

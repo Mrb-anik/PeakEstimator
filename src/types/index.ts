@@ -1,7 +1,18 @@
 export type TradeType = 'electrical' | 'roofing' | 'hvac' | 'painting' | 'plumbing' | 'drain' | 'general' | 'other';
 export type StatusType = 'lead' | 'bidding' | 'sent' | 'approved' | 'won' | 'lost';
 export type CategoryType = 'material' | 'labor' | 'equipment' | 'other';
-export type UserRole = 'platform_owner' | 'super_admin' | 'admin' | 'sales_manager' | 'estimator' | 'technician' | 'viewer';
+export type UserRole =
+  | 'platform_owner'
+  | 'super_admin'
+  | 'agency_admin'
+  | 'organization_owner'
+  | 'admin'
+  | 'manager'
+  | 'sales_manager'
+  | 'estimator'
+  | 'sales_rep'
+  | 'technician'
+  | 'viewer';
 export type OptionTier = 'base' | 'good' | 'better' | 'best' | 'upsell';
 export type BillingTier = 'free' | 'pro' | 'enterprise';
 export type SubscriptionStatus = 'active' | 'past_due' | 'canceled' | 'pending_wire' | 'trialing' | 'suspended';
@@ -200,6 +211,11 @@ export interface Organization {
   subdomain?: string;
   logo_url?: string;
   billing_tier: BillingTier;
+  status?: 'active' | 'trialing' | 'suspended' | 'archived';
+  parent_agency_id?: string | null;
+  forced_settings?: Record<string, any>;
+  feature_locks?: Record<string, boolean>;
+  white_label_settings?: Record<string, any>;
   created_at: string;
   updated_at: string;
 }
@@ -209,6 +225,9 @@ export interface OrganizationMember {
   organization_id: string;
   profile_id: string;
   role: UserRole;
+  permissions?: Record<string, boolean>;
+  feature_overrides?: Record<string, boolean>;
+  parent_restrictions?: Record<string, boolean>;
   created_at: string;
   updated_at: string;
 }
@@ -543,4 +562,40 @@ export interface AdminActionsLog {
   target_id?: string;
   metadata: Record<string, any>;
   created_at: string;
+}
+
+export interface EnterpriseRole {
+  id: string;
+  organization_id: string;
+  name: string;
+  slug: string;
+  base_role: UserRole;
+  permissions: Record<string, boolean>;
+  parent_enforced: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PlatformFeatureControl {
+  id: string;
+  organization_id: string;
+  module_key: string;
+  enabled: boolean;
+  locked_by_parent: boolean;
+  quota_limit?: number | null;
+  quota_used: number;
+  metadata: Record<string, any>;
+  updated_at: string;
+}
+
+export interface ActiveSession {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  device_fingerprint?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  last_seen_at: string;
+  revoked_at?: string | null;
+  metadata: Record<string, any>;
 }

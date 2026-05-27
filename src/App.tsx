@@ -85,6 +85,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   // Support both new role-based and legacy is_admin check
   const isStaff = profile?.role === 'platform_owner' ||
                   profile?.role === 'super_admin' ||
+                  profile?.role === 'agency_admin' ||
                   profile?.is_admin === true;
 
   if (!profile) return <Navigate to="/dashboard" replace />;

@@ -145,8 +145,8 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
   // ── Impersonation ──────────────────────────────────────────────
   const startImpersonation = useCallback(async (targetProfile: Profile) => {
-    // Only platform_owner or super_admin can impersonate
-    if (profile?.role !== 'super_admin' && !profile?.is_admin) {
+    // Only parent-level operators can impersonate child accounts.
+    if (!['platform_owner', 'super_admin', 'agency_admin'].includes(profile?.role ?? '') && !profile?.is_admin) {
       console.error('[OrganizationProvider] Impersonation denied — insufficient role');
       return;
     }

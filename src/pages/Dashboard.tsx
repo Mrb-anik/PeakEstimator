@@ -256,7 +256,7 @@ export default function Dashboard() {
 
     const steps = [
       { id: 'profile', name: 'Complete profile configuration', completed: !!profile.company_name, pts: 30 },
-      { id: 'bids', name: 'Create active estimation bids', completed: projects.length > 0, pts: 25 },
+      { id: 'revenue_pipeline', name: 'Create active revenue opportunities', completed: projects.length > 0, pts: 25 },
       { id: 'markup', name: 'Configure default markup settings', completed: profile.default_labor_markup > 0, pts: 15 },
       { id: 'success_hub', name: 'Connect Concierge Integration request', completed: !!profile.concierge_requested, pts: 15 },
       { id: 'logo', name: 'Upload professional company branding logo', completed: !!profile.company_logo, pts: 15 },
@@ -323,7 +323,7 @@ export default function Dashboard() {
               <div>
                 <h3 className="text-lg font-bold font-sora text-slate-900 dark:text-white mb-2">Dynamic Smart Health Score</h3>
                 <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed mb-6">
-                  Maintain your operational readiness score out of 100. By completing the setup checklists, connecting workflow tools, and establishing active estimates, you secure churn resilience and platform excellence.
+                  Maintain your operational readiness score out of 100. By completing setup, connecting workflow tools, and building active revenue opportunities, you increase close-rate visibility and operating discipline.
                 </p>
                 <div className="flex items-center justify-between">
                   <button onClick={() => setTourStep(1)} className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-medium">Back</button>
@@ -363,7 +363,7 @@ export default function Dashboard() {
             <div className="flex-1 pr-6">
               <h4 className="text-sm font-bold text-white font-sora">Peak Contractor Operations Engine</h4>
               <p className="text-slate-400 text-xs mt-1 leading-relaxed max-w-2xl">
-                Welcome to your fully integrated contractor operations workspace. Utilize the **Setup Checklist** below to configure professional estimate models, trade pricing sheets, and custom tools integrations.
+                Welcome to your contractor revenue infrastructure workspace. Use the setup checklist below to configure pricing controls, proposal systems, follow-up workflows, and revenue intelligence.
               </p>
             </div>
             <button
@@ -379,8 +379,8 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-sora font-extrabold text-slate-900 dark:text-white">Command Center</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Unified intelligence, estimating, & integrations hub</p>
+          <h1 className="text-2xl sm:text-3xl font-sora font-extrabold text-slate-900 dark:text-white">Revenue Command Center</h1>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Pipeline, margin, proposal, and follow-up intelligence in one operating system</p>
         </div>
         <div className="flex gap-3 w-full sm:w-auto">
           <button
@@ -396,7 +396,7 @@ export default function Dashboard() {
             className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-3 bg-copper hover:bg-copper-hover active:bg-copper-600 text-white rounded-xl font-bold text-sm transition-all shadow-md hover:-translate-y-0.5 active:translate-y-0"
           >
             <Plus className="w-4 h-4" />
-            New Bid
+            New Opportunity
           </button>
         </div>
       </div>
@@ -424,7 +424,7 @@ export default function Dashboard() {
               sub="Closed deals"
             />
             <KpiCard
-              label="Active Bids"
+              label="Active Revenue"
               value={kpis.active.toString()}
               icon={Briefcase}
               color="amber"
@@ -536,7 +536,7 @@ export default function Dashboard() {
           {/* Recent Projects Table */}
           <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card rounded-2xl overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4.5 border-b border-app-border dark:border-navy-800">
-              <h2 className="text-sm font-sora font-bold text-slate-900 dark:text-white">Recent Bid Submissions</h2>
+              <h2 className="text-sm font-sora font-bold text-slate-900 dark:text-white">Recent Revenue Opportunities</h2>
               <button
                 onClick={() => navigate('/projects')}
                 className="flex items-center gap-1.5 text-xs text-copper font-bold hover:text-copper-hover transition-colors"
@@ -550,15 +550,15 @@ export default function Dashboard() {
                 <div className="w-12 h-12 bg-slate-50 dark:bg-navy-950 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-app-border dark:border-navy-850">
                   <Briefcase className="w-5 h-5 text-slate-400 dark:text-slate-600" />
                 </div>
-                <p className="text-slate-900 dark:text-white text-sm font-semibold">No estimates generated yet</p>
+                <p className="text-slate-900 dark:text-white text-sm font-semibold">No revenue opportunities created yet</p>
                 <p className="text-slate-500 dark:text-slate-400 text-xs mt-1 max-w-sm mx-auto">
-                  Create your first professional estimation model to enable full operations dashboards, margin stats, and client feedback pipelines.
+                  Create your first opportunity to activate pipeline visibility, margin intelligence, proposal analytics, and automated follow-up.
                 </p>
                 <button
                   onClick={() => navigate('/projects')}
                   className="mt-5 px-5 py-2.5 bg-copper hover:bg-copper-hover text-white rounded-xl text-sm font-bold transition-all shadow-md"
                 >
-                  Create First Estimate
+                  Create First Opportunity
                 </button>
               </div>
             ) : (
@@ -604,13 +604,13 @@ export default function Dashboard() {
           <div className="bg-white dark:bg-navy border border-app-border dark:border-navy-800 shadow-card p-5 rounded-2xl flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-sora font-bold text-slate-900 dark:text-white">Smart Health Score</h2>
+                <h2 className="text-sm font-sora font-bold text-slate-900 dark:text-white">Revenue Readiness Score</h2>
                 <div className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500">
                   <Heart className="w-4 h-4 fill-current animate-pulse" />
                 </div>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
-                Operational rating based on setup, engagement, branding configuration, and workflow integrations.
+                Operational rating based on revenue setup, follow-up discipline, branding, pricing controls, and workflow integrations.
               </p>
 
               {/* Progress gauge */}
@@ -769,10 +769,10 @@ export default function Dashboard() {
             </div>
 
             <h2 className="text-2xl sm:text-3xl font-extrabold font-sora text-slate-900 dark:text-white mb-2 leading-tight">
-              Proposal Signed &amp; Approved
+              Revenue Opportunity Won
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-sm mb-6 max-w-sm mx-auto">
-              Your client <strong className="text-slate-800 dark:text-white">{approvedProposal.client_name}</strong> just accepted the quote for:
+              Your client <strong className="text-slate-800 dark:text-white">{approvedProposal.client_name}</strong> just signed and moved revenue into the won column:
             </p>
 
             {/* Quote details card */}
