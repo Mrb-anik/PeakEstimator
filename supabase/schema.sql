@@ -361,12 +361,44 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Helper function to fetch organization_id without recursion
+CREATE OR REPLACE FUNCTION public.get_auth_organization_id()
+RETURNS uuid AS $$
+BEGIN
+  RETURN (
+    SELECT organization_id FROM public.profiles 
+    WHERE id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Helper function to fetch profile role without recursion
+CREATE OR REPLACE FUNCTION public.get_auth_role()
+RETURNS text AS $$
+BEGIN
+  RETURN (
+    SELECT role FROM public.profiles 
+    WHERE id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 
 -- ─── ROW LEVEL SECURITY POLICIES ──────────────────────────────────────
 
 -- Profiles
 CREATE POLICY "Users read own profile" ON public.profiles FOR SELECT USING (auth.uid() = id OR public.is_super_admin());
+CREATE POLICY "Users read same organization profiles" ON public.profiles FOR SELECT USING (organization_id = public.get_auth_organization_id() OR public.is_super_admin());
 CREATE POLICY "Users update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id OR public.is_super_admin());
+CREATE POLICY "Org owners update organization members" ON public.profiles FOR UPDATE
+  USING (
+    (organization_id = public.get_auth_organization_id() AND public.get_auth_role() IN ('organization_owner', 'agency_admin'))
+    OR public.is_super_admin()
+  )
+  WITH CHECK (
+    ((organization_id = public.get_auth_organization_id() OR organization_id IS NULL) AND public.get_auth_role() IN ('organization_owner', 'agency_admin'))
+    OR public.is_super_admin()
+  );
 
 -- Organizations
 CREATE POLICY "Users read own organization" ON public.organizations FOR SELECT USING (
@@ -375,6 +407,15 @@ CREATE POLICY "Users read own organization" ON public.organizations FOR SELECT U
   OR public.is_super_admin()
 );
 CREATE POLICY "Super admin all orgs" ON public.organizations FOR ALL USING (public.is_super_admin());
+CREATE POLICY "Org owners update own organization" ON public.organizations FOR UPDATE
+  USING (
+    id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid() AND (role = 'organization_owner' OR role = 'agency_admin'))
+    OR public.is_super_admin()
+  )
+  WITH CHECK (
+    id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid() AND (role = 'organization_owner' OR role = 'agency_admin'))
+    OR public.is_super_admin()
+  );
 
 -- Projects
 CREATE POLICY "Own projects only" ON public.projects FOR ALL USING (

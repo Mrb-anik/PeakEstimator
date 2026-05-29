@@ -1,4 +1,4 @@
--- Migration: Add custom domain verification and enterprise quota tracking columns
+-- Migration: Add custom domain verification, enterprise quota tracking columns, and RLS policies
 -- Created: 2026-05-29
 
 -- 1. Add Custom Domain fields to organizations
@@ -30,3 +30,59 @@ BEGIN
       CHECK (upgrade_likelihood IN ('low', 'medium', 'high', 'critical'));
   END IF;
 END $$;
+
+-- 3. Helper functions to fetch user contexts without infinite recursion in policies
+CREATE OR REPLACE FUNCTION public.get_auth_organization_id()
+RETURNS uuid AS $$
+BEGIN
+  RETURN (
+    SELECT organization_id FROM public.profiles 
+    WHERE id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.get_auth_role()
+RETURNS text AS $$
+BEGIN
+  RETURN (
+    SELECT role FROM public.profiles 
+    WHERE id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 4. Define update policy for organizations (allows owners to update settings and custom domains)
+DROP POLICY IF EXISTS "Org owners update own organization" ON public.organizations;
+CREATE POLICY "Org owners update own organization" ON public.organizations 
+  FOR UPDATE 
+  USING (
+    id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid() AND (role = 'organization_owner' OR role = 'agency_admin'))
+    OR public.is_super_admin()
+  )
+  WITH CHECK (
+    id = (SELECT organization_id FROM public.profiles WHERE id = auth.uid() AND (role = 'organization_owner' OR role = 'agency_admin'))
+    OR public.is_super_admin()
+  );
+
+-- 5. Define select policy for other profiles in the same organization (enables viewing team members)
+DROP POLICY IF EXISTS "Users read same organization profiles" ON public.profiles;
+CREATE POLICY "Users read same organization profiles" ON public.profiles 
+  FOR SELECT 
+  USING (
+    organization_id = public.get_auth_organization_id()
+    OR public.is_super_admin()
+  );
+
+-- 6. Define update policy for managing team member roles/membership in organization
+DROP POLICY IF EXISTS "Org owners update organization members" ON public.profiles;
+CREATE POLICY "Org owners update organization members" ON public.profiles 
+  FOR UPDATE 
+  USING (
+    (organization_id = public.get_auth_organization_id() AND public.get_auth_role() IN ('organization_owner', 'agency_admin'))
+    OR public.is_super_admin()
+  )
+  WITH CHECK (
+    ((organization_id = public.get_auth_organization_id() OR organization_id IS NULL) AND public.get_auth_role() IN ('organization_owner', 'agency_admin'))
+    OR public.is_super_admin()
+  );
