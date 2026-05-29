@@ -119,11 +119,11 @@ export default function RevenueAuditPipelineTab() {
   };
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <div className="rounded-2xl border border-sky-500/20 bg-navy-950 p-5 text-white shadow-premium">
+    <div className="space-y-5 animate-fade-in font-inter">
+      <div className="rounded-2xl border border-copper/20 bg-navy-950 p-5 text-white shadow-premium">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-sky-300">
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-copper">
               <Target className="h-3.5 w-3.5" />
               Revenue Audit Pipeline
             </div>
@@ -132,7 +132,7 @@ export default function RevenueAuditPipelineTab() {
               Every audit submission becomes contractor intelligence: lead score, urgency, recovery potential, maturity gaps, software stack, and sales stage.
             </p>
           </div>
-          <button onClick={fetchAudits} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-xs font-bold text-white hover:border-sky-400">
+          <button onClick={fetchAudits} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-xs font-bold text-white hover:border-copper transition-colors">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
@@ -140,12 +140,12 @@ export default function RevenueAuditPipelineTab() {
 
         <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
-            { label: 'Audit Submissions', value: audits.length.toLocaleString(), Icon: Building2, color: 'text-sky-300' },
+            { label: 'Audit Submissions', value: audits.length.toLocaleString(), Icon: Building2, color: 'text-copper' },
             { label: 'Projected Recovery', value: formatCurrency(totalRecovery), Icon: DollarSign, color: 'text-emerald-300' },
             { label: 'Avg Lead Score', value: avgLeadScore.toString(), Icon: BarChart3, color: 'text-violet-300' },
             { label: 'Demo-Ready Leads', value: scores.filter(score => score.lead_score >= 75).length.toString(), Icon: CheckCircle, color: 'text-amber-300' },
           ].map(({ label, value, Icon, color }) => (
-            <div key={label} className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
+            <div key={label} className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</span>
                 <Icon className={`h-4 w-4 ${color}`} />
@@ -160,17 +160,17 @@ export default function RevenueAuditPipelineTab() {
         <section className="rounded-2xl border border-app-border bg-white p-4 shadow-card dark:border-navy-800 dark:bg-navy">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">Pipeline Stages</h3>
-            <Workflow className="h-4 w-4 text-sky-400" />
+            <Workflow className="h-4 w-4 text-copper" />
           </div>
           <div className="space-y-2">
             {stageCounts.map(({ stage, count }) => (
               <div key={stage} className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-navy-800 dark:bg-navy-950/60">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-800 dark:text-white">{stage}</span>
-                  <span className="text-xs font-black text-sky-400">{count}</span>
+                  <span className="text-xs font-black text-copper">{count}</span>
                 </div>
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-navy-800">
-                  <div className="h-full rounded-full bg-sky-500" style={{ width: `${audits.length ? (count / audits.length) * 100 : 0}%` }} />
+                  <div className="h-full rounded-full bg-copper" style={{ width: `${audits.length ? (count / audits.length) * 100 : 0}%` }} />
                 </div>
               </div>
             ))}
@@ -190,7 +190,7 @@ export default function RevenueAuditPipelineTab() {
                   value={query}
                   onChange={event => setQuery(event.target.value)}
                   placeholder="Search audits"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-sky-500/30 dark:border-navy-700 dark:bg-navy-950 dark:text-white"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-copper/30 dark:border-navy-700 dark:bg-navy-950 dark:text-white"
                 />
               </div>
             </div>
@@ -204,7 +204,7 @@ export default function RevenueAuditPipelineTab() {
                     key={row.audit.id}
                     onClick={() => setSelectedId(row.audit.id)}
                     className={`block w-full border-b border-slate-100 p-4 text-left transition dark:border-navy-800 ${
-                      selected?.audit.id === row.audit.id ? 'bg-sky-500/10' : 'hover:bg-slate-50 dark:hover:bg-navy-950/40'
+                      selected?.audit.id === row.audit.id ? 'bg-copper/10' : 'hover:bg-slate-50 dark:hover:bg-navy-950/40'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -212,7 +212,7 @@ export default function RevenueAuditPipelineTab() {
                         <div className="truncate text-sm font-black text-slate-900 dark:text-white">{row.audit.company_name}</div>
                         <div className="mt-1 truncate text-[11px] text-slate-400">{row.audit.owner_name} · {row.audit.trade_type ?? 'contractor'}</div>
                       </div>
-                      <span className="rounded-lg bg-sky-500/10 px-2 py-1 text-[10px] font-black text-sky-400">
+                      <span className="rounded-lg bg-copper/10 px-2 py-1 text-[10px] font-black text-copper">
                         {row.score?.lead_score ?? 0}
                       </span>
                     </div>
@@ -244,7 +244,7 @@ export default function RevenueAuditPipelineTab() {
 
                     <div className="mt-3 flex flex-wrap gap-2">
                       {[Mail, Phone, CalendarClock, MessageSquare, UserPlus].map((Icon, index) => (
-                        <button key={index} className="rounded-xl border border-slate-200 p-2 text-slate-500 transition hover:border-sky-400 hover:text-sky-400 dark:border-navy-700">
+                        <button key={index} className="rounded-xl border border-slate-200 p-2 text-slate-500 transition hover:border-copper hover:text-copper dark:border-navy-700">
                           <Icon className="h-4 w-4" />
                         </button>
                       ))}
@@ -284,8 +284,8 @@ export default function RevenueAuditPipelineTab() {
                           onClick={() => updateStage(selected.pipe, stage)}
                           className={`rounded-lg px-2.5 py-1.5 text-[10px] font-black transition ${
                             selected.pipe?.stage === stage
-                              ? 'bg-sky-500 text-white'
-                              : 'border border-slate-200 text-slate-500 hover:border-sky-400 hover:text-sky-400 dark:border-navy-700'
+                              ? 'bg-copper text-white'
+                              : 'border border-slate-200 text-slate-500 hover:border-copper hover:text-copper dark:border-navy-700'
                           }`}
                         >
                           {stage}
@@ -294,8 +294,8 @@ export default function RevenueAuditPipelineTab() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-sky-500/20 bg-sky-500/5 p-4">
-                    <div className="mb-2 flex items-center gap-2 text-xs font-black text-sky-400">
+                  <div className="rounded-xl border border-copper/20 bg-copper/5 p-4">
+                    <div className="mb-2 flex items-center gap-2 text-xs font-black text-copper">
                       <Zap className="h-4 w-4" />
                       Revenue Opportunity Engine
                     </div>
