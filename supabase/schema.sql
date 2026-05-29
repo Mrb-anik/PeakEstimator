@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   organization_id uuid REFERENCES public.organizations(id) ON DELETE SET NULL,
   email text UNIQUE NOT NULL,
   full_name text,
-  role text DEFAULT 'estimator' CHECK (role IN ('super_admin', 'agency_admin', 'organization_owner', 'manager', 'estimator', 'sales_rep', 'viewer', 'platform_owner')),
+  role text DEFAULT 'estimator' CHECK (role IN ('platform_owner', 'super_admin', 'agency_admin', 'organization_owner', 'admin', 'manager', 'sales_manager', 'estimator', 'sales_rep', 'technician', 'viewer')),
   is_admin boolean DEFAULT false,
   phone text,
   company_name text,
@@ -226,16 +226,16 @@ CREATE TABLE IF NOT EXISTS public.organization_quotas (
 ALTER TABLE public.organization_quotas ENABLE ROW LEVEL SECURITY;
 
 CREATE TABLE IF NOT EXISTS public.active_sessions (
-  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  organization_id uuid REFERENCES public.organizations(id) ON DELETE CASCADE NOT NULL,
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   device_fingerprint text,
-  ip_address text,
+  ip_address inet,
   user_agent text,
-  last_seen_at timestamptz DEFAULT now(),
+  last_seen_at timestamptz NOT NULL DEFAULT now(),
   revoked_at timestamptz,
-  metadata jsonb DEFAULT '{}'::jsonb,
-  created_at timestamptz DEFAULT now()
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.active_sessions ENABLE ROW LEVEL SECURITY;
 
@@ -348,6 +348,428 @@ CREATE TABLE IF NOT EXISTS public.organization_members (
   UNIQUE(organization_id, profile_id)
 );
 ALTER TABLE public.organization_members ENABLE ROW LEVEL SECURITY;
+
+-- ─── Enterprise Control Plane & CRM Tables ─────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.agency_organization_access (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  agency_admin_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  permissions jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, agency_admin_id)
+);
+ALTER TABLE public.agency_organization_access ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.custom_roles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  slug text NOT NULL,
+  base_role text NOT NULL DEFAULT 'viewer',
+  permissions jsonb NOT NULL DEFAULT '{}'::jsonb,
+  parent_enforced boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, slug)
+);
+ALTER TABLE public.custom_roles ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.role_assignments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  profile_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  role_id uuid NOT NULL REFERENCES public.custom_roles(id) ON DELETE CASCADE,
+  assigned_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, profile_id, role_id)
+);
+ALTER TABLE public.role_assignments ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.platform_feature_controls (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  module_key text NOT NULL,
+  enabled boolean NOT NULL DEFAULT true,
+  locked_by_parent boolean NOT NULL DEFAULT false,
+  quota_limit bigint,
+  quota_used bigint NOT NULL DEFAULT 0,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, module_key)
+);
+ALTER TABLE public.platform_feature_controls ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.security_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  actor_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  event_type text NOT NULL,
+  severity text NOT NULL DEFAULT 'info' CHECK (severity IN ('info', 'warning', 'critical')),
+  ip_address inet,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.security_events ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.white_label_configs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE UNIQUE,
+  brand_name text,
+  logo_url text,
+  primary_color text NOT NULL DEFAULT '#2563eb',
+  custom_domain text,
+  email_from_name text,
+  email_from_address text,
+  smtp_settings jsonb NOT NULL DEFAULT '{}'::jsonb,
+  locked_by_parent boolean NOT NULL DEFAULT false,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.white_label_configs ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.integration_connections (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  provider text NOT NULL,
+  status text NOT NULL DEFAULT 'disabled' CHECK (status IN ('enabled', 'disabled', 'error')),
+  config jsonb NOT NULL DEFAULT '{}'::jsonb,
+  encrypted_secret_ref text,
+  last_sync_at timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, provider)
+);
+ALTER TABLE public.integration_connections ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.automation_templates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  module_key text NOT NULL,
+  version integer NOT NULL DEFAULT 1,
+  flow_definition jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.automation_templates ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.global_template_pushes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  template_id uuid REFERENCES public.automation_templates(id) ON DELETE SET NULL,
+  push_type text NOT NULL CHECK (push_type IN ('automation', 'pricing', 'formula', 'materials', 'labor')),
+  status text NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'applied', 'failed')),
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  applied_at timestamptz
+);
+ALTER TABLE public.global_template_pushes ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.estimator_formula_presets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  trade text NOT NULL DEFAULT 'general',
+  formula jsonb NOT NULL DEFAULT '{}'::jsonb,
+  locked_by_parent boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.estimator_formula_presets ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.material_database_versions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  trade text NOT NULL DEFAULT 'general',
+  version integer NOT NULL DEFAULT 1,
+  items jsonb NOT NULL DEFAULT '[]'::jsonb,
+  pushed_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.material_database_versions ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.labor_rate_presets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  region text NOT NULL DEFAULT 'default',
+  trade text NOT NULL DEFAULT 'general',
+  rates jsonb NOT NULL DEFAULT '{}'::jsonb,
+  locked_by_parent boolean NOT NULL DEFAULT false,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (organization_id, region, trade)
+);
+ALTER TABLE public.labor_rate_presets ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.usage_quota_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  quota_key text NOT NULL,
+  delta bigint NOT NULL DEFAULT 1,
+  source text NOT NULL DEFAULT 'app',
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.usage_quota_events ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.storage_usage_snapshots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  used_mb numeric NOT NULL DEFAULT 0,
+  file_count integer NOT NULL DEFAULT 0,
+  captured_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.storage_usage_snapshots ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.api_usage_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  api_key_id uuid,
+  route text NOT NULL,
+  method text NOT NULL DEFAULT 'GET',
+  status_code integer,
+  duration_ms integer,
+  ip_address inet,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.api_usage_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.system_health_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  service_key text NOT NULL,
+  status text NOT NULL CHECK (status IN ('operational', 'degraded', 'outage')),
+  message text,
+  metrics jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.system_health_events ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.global_pricing_plans (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  plan_key text NOT NULL UNIQUE,
+  name text NOT NULL,
+  monthly_price_cents integer NOT NULL DEFAULT 0,
+  annual_price_cents integer NOT NULL DEFAULT 0,
+  included_features jsonb NOT NULL DEFAULT '{}'::jsonb,
+  limits jsonb NOT NULL DEFAULT '{}'::jsonb,
+  active boolean NOT NULL DEFAULT true,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.global_pricing_plans ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.system_api_keys (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  key_hash text NOT NULL,
+  scopes jsonb NOT NULL DEFAULT '[]'::jsonb,
+  last_used_at timestamptz,
+  revoked_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.system_api_keys ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.revenue_audits (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL DEFAULT public.default_platform_revenue_org_id() REFERENCES public.organizations(id) ON DELETE CASCADE,
+  company_name text NOT NULL,
+  owner_name text NOT NULL,
+  email text NOT NULL,
+  phone text,
+  team_size text,
+  annual_revenue_range text,
+  service_area text,
+  trade_type text,
+  estimates_per_month integer NOT NULL DEFAULT 0,
+  average_project_size numeric NOT NULL DEFAULT 0,
+  average_close_rate numeric NOT NULL DEFAULT 0,
+  average_response_time_hours numeric NOT NULL DEFAULT 0,
+  follow_up_process text,
+  estimator_count integer NOT NULL DEFAULT 0,
+  office_staff_count integer NOT NULL DEFAULT 0,
+  lost_leads_per_month integer NOT NULL DEFAULT 0,
+  delayed_estimates_per_month integer NOT NULL DEFAULT 0,
+  inconsistent_pricing_issues text,
+  missed_follow_ups_per_month integer NOT NULL DEFAULT 0,
+  callback_delay_hours numeric NOT NULL DEFAULT 0,
+  manual_processes text,
+  estimating_time_hours numeric NOT NULL DEFAULT 0,
+  current_crm text,
+  estimating_software text,
+  scheduling_tools text,
+  invoicing_tools text,
+  spreadsheet_usage text,
+  manual_workflows text,
+  estimated_lost_revenue numeric NOT NULL DEFAULT 0,
+  projected_revenue_recovery numeric NOT NULL DEFAULT 0,
+  qualification_status text NOT NULL DEFAULT 'New Audit',
+  source text NOT NULL DEFAULT 'landing_page',
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.revenue_audits ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.audit_scores (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL DEFAULT public.default_platform_revenue_org_id() REFERENCES public.organizations(id) ON DELETE CASCADE,
+  revenue_audit_id uuid NOT NULL REFERENCES public.revenue_audits(id) ON DELETE CASCADE,
+  efficiency_score integer NOT NULL DEFAULT 0,
+  follow_up_score integer NOT NULL DEFAULT 0,
+  scalability_score integer NOT NULL DEFAULT 0,
+  operational_maturity_score integer NOT NULL DEFAULT 0,
+  lead_score integer NOT NULL DEFAULT 0,
+  urgency_score integer NOT NULL DEFAULT 0,
+  growth_potential_score integer NOT NULL DEFAULT 0,
+  estimated_deal_value numeric NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.audit_scores ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.lead_pipeline (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL DEFAULT public.default_platform_revenue_org_id() REFERENCES public.organizations(id) ON DELETE CASCADE,
+  revenue_audit_id uuid NOT NULL REFERENCES public.revenue_audits(id) ON DELETE CASCADE,
+  stage text NOT NULL DEFAULT 'New Audit' CHECK (stage IN ('New Audit', 'Qualified', 'Contacted', 'Demo Scheduled', 'Proposal Sent', 'Negotiation', 'Closed Won', 'Closed Lost')),
+  projected_revenue_value numeric NOT NULL DEFAULT 0,
+  qualification_status text NOT NULL DEFAULT 'New Audit',
+  assigned_rep_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  contact_attempts integer NOT NULL DEFAULT 0,
+  next_action_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.lead_pipeline ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.contacts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL DEFAULT public.default_platform_revenue_org_id() REFERENCES public.organizations(id) ON DELETE CASCADE,
+  revenue_audit_id uuid REFERENCES public.revenue_audits(id) ON DELETE SET NULL,
+  company_name text,
+  full_name text NOT NULL,
+  email text,
+  phone text,
+  contact_type text NOT NULL DEFAULT 'customer',
+  lifecycle_stage text NOT NULL DEFAULT 'lead',
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.contacts ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.opportunities (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  contact_id uuid REFERENCES public.contacts(id) ON DELETE SET NULL,
+  company_name text,
+  title text NOT NULL,
+  stage text NOT NULL DEFAULT 'New Audit',
+  value numeric NOT NULL DEFAULT 0,
+  close_probability integer NOT NULL DEFAULT 0,
+  expected_close_date date,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.opportunities ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.activities (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  contact_id uuid REFERENCES public.contacts(id) ON DELETE SET NULL,
+  opportunity_id uuid REFERENCES public.opportunities(id) ON DELETE SET NULL,
+  activity_type text NOT NULL,
+  subject text NOT NULL,
+  body text,
+  actor_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  due_at timestamptz,
+  completed_at timestamptz,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.activities ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.proposals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  opportunity_id uuid REFERENCES public.opportunities(id) ON DELETE SET NULL,
+  revenue_audit_id uuid REFERENCES public.revenue_audits(id) ON DELETE SET NULL,
+  title text NOT NULL,
+  package_name text,
+  roi_projection numeric NOT NULL DEFAULT 0,
+  implementation_price numeric NOT NULL DEFAULT 0,
+  feature_bundle jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'viewed', 'accepted', 'rejected')),
+  share_token text UNIQUE DEFAULT encode(gen_random_bytes(16), 'hex'),
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.proposals ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.automations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  trigger_key text NOT NULL,
+  status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'paused')),
+  flow_definition jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.automations ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.notes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  contact_id uuid REFERENCES public.contacts(id) ON DELETE SET NULL,
+  opportunity_id uuid REFERENCES public.opportunities(id) ON DELETE SET NULL,
+  body text NOT NULL,
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.tasks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  contact_id uuid REFERENCES public.contacts(id) ON DELETE SET NULL,
+  opportunity_id uuid REFERENCES public.opportunities(id) ON DELETE SET NULL,
+  title text NOT NULL,
+  status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'completed', 'canceled')),
+  priority text NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+  assigned_to uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  due_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.communications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  contact_id uuid REFERENCES public.contacts(id) ON DELETE SET NULL,
+  opportunity_id uuid REFERENCES public.opportunities(id) ON DELETE SET NULL,
+  channel text NOT NULL CHECK (channel IN ('email', 'sms', 'call', 'meeting', 'internal')),
+  direction text NOT NULL DEFAULT 'outbound' CHECK (direction IN ('inbound', 'outbound')),
+  subject text,
+  body text,
+  status text NOT NULL DEFAULT 'logged',
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.communications ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.onboarding_flows (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  opportunity_id uuid REFERENCES public.opportunities(id) ON DELETE SET NULL,
+  name text NOT NULL,
+  stage text NOT NULL DEFAULT 'not_started',
+  checklist jsonb NOT NULL DEFAULT '[]'::jsonb,
+  started_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.onboarding_flows ENABLE ROW LEVEL SECURITY;
 
 -- ─── SUPER ADMIN HELPER FUNCTION ──────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.is_super_admin()

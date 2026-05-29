@@ -1,5 +1,17 @@
-node_modules
-node_modules
+# Dependency directories
+node_modules/
+
+# Production build output
+dist/
+dist
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.staging
 
 # Backup files
 *.bak
@@ -7,3 +19,6 @@ node_modules
 
 # Local dev server logs
 *.log
+
+# Supabase local config/temp (except config.toml and migrations)
+supabase/.temp/
